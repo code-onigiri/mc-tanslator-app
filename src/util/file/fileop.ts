@@ -1,12 +1,14 @@
 import { create } from "zustand";
 
-interface JsonData {
+export interface JsonData {
   [key: string]: string;
 }
 
 interface translateDataType {
   translateSource: JsonData | null;
   translateTarget: JsonData | null;
+  settranslateSource: (data: JsonData) => void;
+  settranslateTarget: (data: JsonData) => void;
 }
 
 const translateData = create<translateDataType>()((set) => ({
@@ -25,3 +27,5 @@ const translateData = create<translateDataType>()((set) => ({
   settranslateTarget: (data: JsonData) =>
     set(() => ({ translateTarget: data })),
 }));
+
+export { translateData };
