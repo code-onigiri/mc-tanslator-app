@@ -37,24 +37,25 @@ export default function Menu() {
     <div ref={menuRef} className="relative">
       <button
         onClick={toggleMenu}
-        className="p-2 hover:bg-base-300 rounded-lg transition-colors cursor-pointer flex items-center justify-center w-10 h-10"
+        className="mx-2 p-2 hover:bg-base-300 rounded-lg transition-colors cursor-pointer flex items-center justify-center w-8 h-8" // w-10 h-10 から w-8 h-8 に縮小
         aria-expanded={isOpen}
         aria-controls="menu-dropdown"
         aria-label={isOpen ? "メニューを閉じる" : "メニューを開く"}
       >
         {/* ハンバーガーメニュー/バツマークのアニメーション */}
-        <div className="relative w-6 h-6 flex justify-center items-center">
+        <div className="relative w-4 h-4 flex justify-center items-center">
+          {" "}
+          {/* w-6 h-6 から w-4 h-4 に縮小 */}
           {/* 上の線 */}
           <motion.span
             className="absolute h-0.5 bg-current rounded-full w-full"
             initial={false}
             animate={{
               rotate: isOpen ? 45 : 0,
-              translateY: isOpen ? 0 : -8,
+              translateY: isOpen ? 0 : -5, // -8 から -5 に調整
             }}
             transition={{ duration: 0.3 }}
           />
-
           {/* 真ん中の線 */}
           <motion.span
             className="absolute h-0.5 bg-current rounded-full w-full"
@@ -65,14 +66,13 @@ export default function Menu() {
             }}
             transition={{ duration: 0.3 }}
           />
-
           {/* 下の線 */}
           <motion.span
             className="absolute h-0.5 bg-current rounded-full w-full"
             initial={false}
             animate={{
               rotate: isOpen ? -45 : 0,
-              translateY: isOpen ? 0 : 8,
+              translateY: isOpen ? 0 : 5, // 8 から 5 に調整
             }}
             transition={{ duration: 0.3 }}
           />
