@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { TargetFileOpen, SourceFileOpen } from "../util/file/fileopen";
 
 export default function Menu() {
   const [isOpen, setIsOpen] = useState(false);
@@ -83,7 +84,7 @@ export default function Menu() {
         {isOpen && (
           <motion.div
             id="menu-dropdown"
-            className="absolute top-full mt-2 p-4 rounded-lg shadow-lg bg-base-200 text-base-content w-48 z-50"
+            className="absolute top-full mt-2 p-4 rounded-lg shadow-lg bg-base-200 text-base-content w-64 z-50"
             initial={{ opacity: 0, y: -10 }}
             animate={{
               opacity: 1,
@@ -105,16 +106,32 @@ export default function Menu() {
               transformOrigin: "top right",
             }}
           >
-            <div className="space-y-2">
-              <div className="menu-item p-2 hover:bg-base-300 rounded-md transition-colors">
-                メニュー項目 1
+            <div className="space-y-3">
+              {/* ファイルを開く関連項目 */}
+              <div className="menu-section">
+                <h3 className="text-sm font-bold mb-2 text-primary">
+                  ファイルを開く
+                </h3>
+                <div className="pl-1 space-y-2">
+                  {/* 翻訳対象ファイルを開く */}
+                  <div className="menu-item">
+                    <p className="text-xs mb-1 opacity-70">
+                      翻訳対象ファイル (en_us.json など)
+                    </p>
+                    <TargetFileOpen />
+                  </div>
+
+                  {/* 翻訳元ファイルを開く */}
+                  <div className="menu-item">
+                    <p className="text-xs mb-1 opacity-70">
+                      翻訳元ファイル (ja_jp.json など)
+                    </p>
+                    <SourceFileOpen />
+                  </div>
+                </div>
               </div>
-              <div className="menu-item p-2 hover:bg-base-300 rounded-md transition-colors">
-                メニュー項目 2
-              </div>
-              <div className="menu-item p-2 hover:bg-base-300 rounded-md transition-colors">
-                メニュー項目 3
-              </div>
+
+              <div className="divider my-1"></div>
             </div>
           </motion.div>
         )}
