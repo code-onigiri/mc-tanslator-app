@@ -1,12 +1,12 @@
-import React, { useMemo, useState, useEffect } from "react";
-import { FixedSizeList as List } from "react-window";
-import { translateData } from "../util/file/fileop";
+import React, { useMemo, useEffect, useRef } from "react";
+import { FixedSizeList, FixedSizeList as List } from "react-window";
 import AutoSizer from "react-virtualized-auto-sizer";
-import Editer from "./Editer"; // エディターコンポーネントをインポート
+import { useListStore, useSyncTranslateData } from "./stores/ListStore";
 
 // テキストを省略する関数
 const truncateText = (text: string, maxLength: number = 50): string => {
   if (text.length <= maxLength) return text;
+  //長かった場合...をつける
   return text.substring(0, maxLength) + "...";
 };
 
@@ -31,53 +31,34 @@ const highlightText = (text: string, query: string): React.ReactNode => {
   );
 };
 
-// エディター用の選択アイテムの型定義
-interface SelectedItem {
-  key: string;
-  sourceValue: string;
-  targetValue: string;
-}
+export default function TranslationList() {
+  useSyncTranslateData();
 
-const TranslationList: React.FC = () => {
   // Zustand ストアから翻訳データを取得
-  const { translateSource, translateTarget } = translateData();
+  const translateSource = useListStore((state) => state.translateSource);
+  const translateTarget = useListStore((state) => state.translateTarget);
+  const searchQuery = useListStore((state) => state.searchQuery);
+  const listindex = useListStore((state) => state.listindex);
+  const listRef = useRef<FixedSizeList<any>>(null);
 
-  // 状態管理
-  const [searchQuery, setSearchQuery] = useState("");
-  const [listRef, setListRef] = useState<List | null>(null);
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<SelectedItem | null>(null);
+  console.debug(translateTarget, translateSource);
 
-  // translateSource のキーを基にリストアイテムを作成
+  useEffect(() => {
+    if (listRef.current) {
+      listRef.current.scrollToItem(listindex);
+    }
+  }, [listindex]);
+
+  // 表示するべきアイテム
   const allItems = useMemo(() => {
     if (!translateSource) return [];
 
     return Object.keys(translateSource).map((key) => ({
       key,
-      sourceValue: translateSource[key] || "",
+      sourceValue: translateSource?.[key] || "",
       targetValue: translateTarget?.[key] || "",
     }));
   }, [translateSource, translateTarget]);
-
-  // 検索クエリでフィルタリング
-  const filteredItems = useMemo(() => {
-    if (!searchQuery.trim()) return allItems;
-
-    const query = searchQuery.toLowerCase();
-    return allItems.filter(
-      (item) =>
-        item.key.toLowerCase().includes(query) ||
-        item.sourceValue.toLowerCase().includes(query) ||
-        item.targetValue.toLowerCase().includes(query),
-    );
-  }, [allItems, searchQuery]);
-
-  // 検索クエリが変更されたとき、リストをリセット
-  useEffect(() => {
-    if (listRef) {
-      listRef.scrollTo(0);
-    }
-  }, [searchQuery]);
 
   // データがない場合のプレースホルダー
   if (!translateSource) {
@@ -99,22 +80,12 @@ const TranslationList: React.FC = () => {
     index: number;
     style: React.CSSProperties;
   }) => {
-    const item = filteredItems[index];
-
-    // 右クリックハンドラ
-    const handleRightClick = (e: React.MouseEvent) => {
-      e.preventDefault(); // デフォルトの右クリックメニューを表示しない
-      setSelectedItem(item);
-      setEditorOpen(true);
-    };
+    const item = allItems[index];
 
     return (
       <div
         style={style}
-        className={`flex flex-col p-3 border-b border-base-300 hover:bg-base-200 transition-colors cursor-pointer ${
-          selectedItem?.key === item.key && editorOpen ? "bg-base-300" : ""
-        }`}
-        onContextMenu={handleRightClick} // 右クリックイベント
+        className={`flex flex-col p-3 border-b border-base-300 hover:bg-base-200 transition-colors cursor-pointer`}
       >
         <>
           {/* キー */}
@@ -150,61 +121,33 @@ const TranslationList: React.FC = () => {
     );
   };
 
+  console.log("debug:" + allItems.length);
+
   return (
     <div className="h-full w-full flex">
       {/* リストパート */}
-      <div
-        className={`flex flex-col ${editorOpen ? "w-1/2" : "w-full"} transition-all duration-300`}
-      >
-        {/* 検索バー */}
-        <div className="p-3 border-b border-base-300 sticky top-0 z-10 bg-base-100">
-          <div className="relative">
-            <label className="input">
-              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                🔍
-              </div>
-              <input
-                type="text"
-                className="w-full pl-6 py-2"
-                placeholder="キーや翻訳テキストを検索..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </label>
-            {searchQuery && (
-              <button
-                className="absolute inset-y-0 right-0 flex items-center pr-3"
-                onClick={() => setSearchQuery("")}
-                aria-label="検索をクリア"
-              >
-                <span className="text-gray-500 hover:text-gray-700">✕</span>
-              </button>
-            )}
-          </div>
-          {filteredItems.length !== allItems.length && (
-            <div className="text-xs mt-1 text-info">
-              {filteredItems.length} 件見つかりました（全 {allItems.length}{" "}
-              件中）
-            </div>
-          )}
-        </div>
-
+      <div className="flex flex-col w-full h-full">
         {/* リスト */}
-        <div className="flex-1 rounded-md my-2">
-          {filteredItems.length > 0 ? (
+        <div
+          className="flex-1 rounded-md my-2"
+          style={{ height: "calc(100vh - 100px)", width: "100%" }}
+        >
+          {allItems.length > 0 ? (
             <AutoSizer>
-              {({ height, width }) => (
-                <List
-                  ref={(ref) => setListRef(ref)}
-                  height={height}
-                  width={width}
-                  itemCount={filteredItems.length}
-                  itemSize={90}
-                  overscanCount={5}
-                >
-                  {Row}
-                </List>
-              )}
+              {({ height, width }) => {
+                return width > 0 && height > 0 ? (
+                  <List
+                    ref={listRef}
+                    height={height}
+                    width={width}
+                    itemCount={allItems.length}
+                    itemSize={90}
+                    overscanCount={5}
+                  >
+                    {Row}
+                  </List>
+                ) : null;
+              }}
             </AutoSizer>
           ) : (
             <div className="flex flex-col items-center justify-center h-full p-8 text-center">
@@ -216,36 +159,6 @@ const TranslationList: React.FC = () => {
           )}
         </div>
       </div>
-
-      {/* エディターパート */}
-      {editorOpen && (
-        <div className="w-1/2 h-full border-l border-base-300 p-2">
-          <div className="flex justify-between items-center mb-3 px-2">
-            <h3 className="font-bold text-primary">エディター</h3>
-            <button
-              className="btn btn-sm btn-ghost"
-              onClick={() => setEditorOpen(false)}
-              aria-label="エディターを閉じる"
-            >
-              ✕
-            </button>
-          </div>
-
-          {selectedItem && (
-            <div className="mb-3 px-2">
-              <div className="font-medium mb-1 break-all">
-                {selectedItem.key}
-              </div>
-            </div>
-          )}
-
-          <div className="h-[calc(100%-80px)]">
-            <Editer />
-          </div>
-        </div>
-      )}
     </div>
   );
-};
-
-export default TranslationList;
+}

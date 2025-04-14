@@ -8,7 +8,7 @@ export function TargetFileOpen() {
       onChange={handleTargetFileChange}
       accept=".json,.lang"
       className="file-input"
-      placeholder="en_us.jsonなどを開く"
+      placeholder="ja_jp.jsonなどを開く"
     ></input>
   );
 }
@@ -51,7 +51,7 @@ export function SourceFileOpen() {
       onChange={handleSourceFileChange}
       accept=".json,.lang"
       className="file-input"
-      placeholder="ja_jp.jsonなどを開く"
+      placeholder="en_us.jsonなどを開く"
     ></input>
   );
 }

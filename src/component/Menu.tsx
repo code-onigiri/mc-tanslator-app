@@ -113,25 +113,22 @@ export default function Menu() {
                   ファイルを開く
                 </h3>
                 <div className="pl-1 space-y-2">
-                  {/* 翻訳対象ファイルを開く */}
-                  <div className="menu-item">
-                    <p className="text-xs mb-1 opacity-70">
-                      翻訳対象ファイル (en_us.json など)
-                    </p>
-                    <TargetFileOpen />
-                  </div>
-
                   {/* 翻訳元ファイルを開く */}
                   <div className="menu-item">
                     <p className="text-xs mb-1 opacity-70">
-                      翻訳元ファイル (ja_jp.json など)
+                      翻訳元ファイル (en_us.json など)
                     </p>
                     <SourceFileOpen />
                   </div>
+                  {/* 翻訳対象ファイルを開く */}
+                  <div className="menu-item">
+                    <p className="text-xs mb-1 opacity-70">
+                      翻訳対象ファイル (ja_jp.json など)
+                    </p>
+                    <TargetFileOpen />
+                  </div>
                 </div>
               </div>
-
-              <div className="divider my-1"></div>
             </div>
           </motion.div>
         )}
