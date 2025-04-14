@@ -1,7 +1,8 @@
-import React, { useMemo, useEffect, useRef } from "react";
+import React, { useMemo, useEffect, useRef, useCallback } from "react";
 import { FixedSizeList, FixedSizeList as List } from "react-window";
 import AutoSizer from "react-virtualized-auto-sizer";
 import { useListStore, useSyncTranslateData } from "./stores/ListStore";
+import { useediter } from "./stores/EditerStore";
 
 // テキストを省略する関数
 const truncateText = (text: string, maxLength: number = 50): string => {
@@ -41,7 +42,20 @@ export default function TranslationList() {
   const listindex = useListStore((state) => state.listindex);
   const listRef = useRef<FixedSizeList<any>>(null);
 
-  console.debug(translateTarget, translateSource);
+  // エディターストアのセッター関数を取得
+  const setkey = useediter((state) => state.setkey);
+  const setsourcevalue = useediter((state) => state.setSourceValue);
+  const settargetvalue = useediter((state) => state.setTargetValue);
+
+  // イベントハンドラをuseCallbackで定義
+  const handleItemSelect = useCallback(
+    (key: string, sourceValue: string, targetValue: string) => {
+      setkey(key);
+      setsourcevalue(sourceValue);
+      settargetvalue(targetValue);
+    },
+    [setkey, setsourcevalue, settargetvalue],
+  );
 
   useEffect(() => {
     if (listRef.current) {
@@ -86,6 +100,9 @@ export default function TranslationList() {
       <div
         style={style}
         className={`flex flex-col p-3 border-b border-base-300 hover:bg-base-200 transition-colors cursor-pointer`}
+        onClick={(_) =>
+          handleItemSelect(item.key, item.sourceValue, item.targetValue)
+        }
       >
         <>
           {/* キー */}
