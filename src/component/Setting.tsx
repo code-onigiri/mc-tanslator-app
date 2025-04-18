@@ -67,7 +67,6 @@ export default function SettingsMenu() {
         aria-controls="settings-dropdown"
         aria-label={isOpen ? "設定メニューを閉じる" : "設定メニューを開く"}
       >
-        {/* Bootstrap Icons - 歯車アイコン */}
         <motion.svg
           xmlns="http://www.w3.org/2000/svg"
           width="16"

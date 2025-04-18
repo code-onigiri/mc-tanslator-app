@@ -3,6 +3,7 @@ import { FixedSizeList, FixedSizeList as List } from "react-window";
 import AutoSizer from "react-virtualized-auto-sizer";
 import { useListStore, useSyncTranslateData } from "./stores/ListStore";
 import { useediter } from "./stores/EditerStore";
+import { Search } from "./Search";
 
 // テキストを省略する関数
 const truncateText = (text: string, maxLength: number = 50): string => {
@@ -32,12 +33,17 @@ const highlightText = (text: string, query: string): React.ReactNode => {
   );
 };
 
+// フィルターのタイプ定義
+type FilterType = "all" | "translated" | "untranslated";
+
 export default function TranslationList() {
   useSyncTranslateData();
 
+  // アクティブなフィルターの状態
+  const [activeFilter, setActiveFilter] = React.useState<FilterType>("all");
+
   // Zustand ストアから翻訳データを取得
-  const translateSource = useListStore((state) => state.translateSource);
-  const translateTarget = useListStore((state) => state.translateTarget);
+  const translateData = useListStore((state) => state.translate);
   const searchQuery = useListStore((state) => state.searchQuery);
   const listindex = useListStore((state) => state.listindex);
   const listRef = useRef<FixedSizeList<any>>(null);
@@ -63,19 +69,61 @@ export default function TranslationList() {
     }
   }, [listindex]);
 
-  // 表示するべきアイテム
-  const allItems = useMemo(() => {
-    if (!translateSource) return [];
+  // 翻訳済み項目の計算
+  const translatedCount = useMemo(() => {
+    if (!translateData || !translateData.list) return 0;
+    return translateData.list.filter(
+      (item) => item.targetValue && item.targetValue.trim() !== "",
+    ).length;
+  }, [translateData]);
 
-    return Object.keys(translateSource).map((key) => ({
-      key,
-      sourceValue: translateSource?.[key] || "",
-      targetValue: translateTarget?.[key] || "",
-    }));
-  }, [translateSource, translateTarget]);
+  // 未翻訳項目の計算
+  const untranslatedCount = useMemo(() => {
+    if (!translateData || !translateData.list) return 0;
+    return translateData.list.filter(
+      (item) => !item.targetValue || item.targetValue.trim() === "",
+    ).length;
+  }, [translateData]);
+
+  // 総数の計算
+  const totalCount = useMemo(() => {
+    if (!translateData || !translateData.list) return 0;
+    return translateData.list.length;
+  }, [translateData]);
+
+  // 表示するべきアイテム
+  const filteredItems = useMemo(() => {
+    if (!translateData || !translateData.list) return [];
+
+    // まずフィルターを適用
+    let filteredList = translateData.list;
+
+    // フィルターに基づいて項目をフィルタリング
+    if (activeFilter === "translated") {
+      filteredList = filteredList.filter(
+        (item) => item.targetValue && item.targetValue.trim() !== "",
+      );
+    } else if (activeFilter === "untranslated") {
+      filteredList = filteredList.filter(
+        (item) => !item.targetValue || item.targetValue.trim() === "",
+      );
+    }
+
+    // 検索クエリがある場合はさらにフィルタリング
+    if (searchQuery.trim()) {
+      return filteredList.filter(
+        (item) =>
+          item.key.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.sourceValue.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.targetValue?.toLowerCase().includes(searchQuery.toLowerCase()),
+      );
+    }
+
+    return filteredList;
+  }, [translateData, searchQuery, activeFilter]);
 
   // データがない場合のプレースホルダー
-  if (!translateSource) {
+  if (!translateData || !translateData.list) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-8 text-center">
         <div className="text-lg mb-2 opacity-70">翻訳データがありません</div>
@@ -94,7 +142,7 @@ export default function TranslationList() {
     index: number;
     style: React.CSSProperties;
   }) => {
-    const item = allItems[index];
+    const item = filteredItems[index];
 
     return (
       <div
@@ -138,18 +186,59 @@ export default function TranslationList() {
     );
   };
 
-  console.log("debug:" + allItems.length);
-
   return (
     <div className="h-full w-full flex">
       {/* リストパート */}
       <div className="flex flex-col w-full h-full">
+        {/* 検索バー */}
+        <Search />
+        {/* 検索結果カウント */}
+        {searchQuery && (
+          <div className="text-xs text-right pr-3 text-info-content">
+            検索結果: {filteredItems.length}件
+          </div>
+        )}
+
+        {/* タブ型フィルター */}
+        <div role="tablist" className="tabs tabs-border bg-base-200 mb-2">
+          <button
+            role="tab"
+            className={`tab ${activeFilter === "all" ? "tab-active" : ""} min-w-1/6 `}
+            onClick={() => setActiveFilter("all")}
+          >
+            全て{" "}
+            <span className="badge badge-sm badge-neutral ml-1">
+              {totalCount}
+            </span>
+          </button>
+          <button
+            role="tab"
+            className={`tab ${activeFilter === "translated" ? "tab-active" : ""} min-w-1/6`}
+            onClick={() => setActiveFilter("translated")}
+          >
+            翻訳済み{" "}
+            <span className="badge badge-sm badge-success ml-1">
+              {translatedCount}
+            </span>
+          </button>
+          <button
+            role="tab"
+            className={`tab ${activeFilter === "untranslated" ? "tab-active" : ""} min-w-1/6 `}
+            onClick={() => setActiveFilter("untranslated")}
+          >
+            未翻訳{" "}
+            <span className="badge badge-sm badge-warning ml-1">
+              {untranslatedCount}
+            </span>
+          </button>
+        </div>
+
         {/* リスト */}
         <div
           className="flex-1 rounded-md my-2"
           style={{ height: "calc(100vh - 100px)", width: "100%" }}
         >
-          {allItems.length > 0 ? (
+          {filteredItems.length > 0 ? (
             <AutoSizer>
               {({ height, width }) => {
                 return width > 0 && height > 0 ? (
@@ -157,7 +246,7 @@ export default function TranslationList() {
                     ref={listRef}
                     height={height}
                     width={width}
-                    itemCount={allItems.length}
+                    itemCount={filteredItems.length}
                     itemSize={90}
                     overscanCount={5}
                   >
@@ -168,9 +257,13 @@ export default function TranslationList() {
             </AutoSizer>
           ) : (
             <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-              <div className="text-lg mb-2 opacity-70">検索結果なし</div>
+              <div className="text-lg mb-2 opacity-70">
+                {searchQuery ? "検索結果なし" : "表示項目なし"}
+              </div>
               <p className="text-sm opacity-50">
-                別の検索キーワードを試してください
+                {searchQuery
+                  ? "別の検索キーワードを試してください"
+                  : "別のフィルターを選択してください"}
               </p>
             </div>
           )}

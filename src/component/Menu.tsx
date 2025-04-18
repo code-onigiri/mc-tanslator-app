@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { TargetFileOpen, SourceFileOpen } from "../util/file/fileopen";
+import { FileSaveButton } from "../util/file/filesave";
 
 export default function Menu() {
   const [isOpen, setIsOpen] = useState(false);
@@ -106,7 +107,7 @@ export default function Menu() {
               transformOrigin: "top right",
             }}
           >
-            <div className="space-y-3">
+            <div className="space-y-4">
               {/* ファイルを開く関連項目 */}
               <div className="menu-section">
                 <h3 className="text-sm font-bold mb-2 text-primary">
@@ -129,6 +130,50 @@ export default function Menu() {
                   </div>
                 </div>
               </div>
+
+              {/* 区切り線 */}
+              <div className="h-px bg-base-300 w-full"></div>
+
+              {/* ファイル保存セクション */}
+              <div className="menu-section">
+                <h3 className="text-sm font-bold mb-2 text-primary">
+                  ファイルを保存
+                </h3>
+                <div className="pl-1 space-y-2">
+                  {/* 翻訳元ファイルを保存 */}
+                  <div className="menu-item">
+                    <p className="text-xs mb-1 opacity-70">
+                      翻訳元ファイルを保存
+                    </p>
+                    <FileSaveButton isSource={true} className="w-full" />
+                  </div>
+
+                  {/* 翻訳対象ファイルを保存 */}
+                  <div className="menu-item">
+                    <p className="text-xs mb-1 opacity-70">
+                      翻訳対象ファイルを保存
+                    </p>
+                    <FileSaveButton
+                      isSource={false}
+                      className="w-full btn-primary"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 将来的な拡張用に空のセクションを用意しておく */}
+              {/* <div className="h-px bg-base-300 w-full"></div>
+
+              <div className="menu-section">
+                <h3 className="text-sm font-bold mb-2 text-primary">
+                  その他
+                </h3>
+                <div className="pl-1">
+                  <button className="btn btn-sm w-full">
+                    ヘルプ
+                  </button>
+                </div>
+              </div> */}
             </div>
           </motion.div>
         )}

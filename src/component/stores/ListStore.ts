@@ -1,23 +1,22 @@
 import { create } from "zustand";
-import {
-  JsonData,
-  translateData as fileTranslateData,
-} from "../../util/file/fileop";
+import { translateData as fileTranslateData } from "../../util/file/fileop";
 import { useEffect } from "react";
 
 // 選択アイテムの型定義
-export interface SelectedItem {
+export interface item {
   key: string;
   sourceValue: string;
   targetValue: string;
 }
 
+interface listData {
+  list: item[];
+}
+
 //Zustandストアのinterface
 interface ListStoreState {
-  translateSource: JsonData | null;
-  translateTarget: JsonData | null;
-  setTranslateSource: (data: JsonData | null) => void;
-  setTranslateTarget: (data: JsonData | null) => void;
+  translate: listData | null;
+  setTranslate: (data: listData | null) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   listindex: number;
@@ -26,10 +25,8 @@ interface ListStoreState {
 
 export const useListStore = create<ListStoreState>((set) => ({
   //翻訳データ
-  translateSource: null,
-  translateTarget: null,
-  setTranslateSource: (data: JsonData | null) => set({ translateSource: data }),
-  setTranslateTarget: (data: JsonData | null) => set({ translateTarget: data }),
+  translate: null,
+  setTranslate: (data: listData | null) => set({ translate: data }),
   //検索
   searchQuery: "",
   setSearchQuery: (query: string) => set({ searchQuery: query }),
@@ -47,20 +44,29 @@ export function useSyncTranslateData() {
   const fileTarget = fileTranslateData((state) => state.translateTarget);
 
   // ListStoreからセッター関数を取得
-  const setTranslateSource = useListStore((state) => state.setTranslateSource);
-  const setTranslateTarget = useListStore((state) => state.setTranslateTarget);
+  const setTranslate = useListStore((state) => state.setTranslate);
 
-  // fileSourceが変化したらListStoreのtranslateSourceを更新
   useEffect(() => {
-    if (fileSource !== null) {
-      setTranslateSource(fileSource);
-    }
-  }, [fileSource, setTranslateSource]);
+    if (fileSource !== null && fileTarget !== null) {
+      // sourceのkeyをベースにリストを生成
+      const translatedList: item[] = [];
 
-  // fileTargetが変化したらListStoreのtranslateTargetを更新
-  useEffect(() => {
-    if (fileTarget !== null) {
-      setTranslateTarget(fileTarget);
+      // sourceのすべてのキーに対して処理
+      Object.keys(fileSource).forEach((key) => {
+        const sourceValue = fileSource[key];
+        // targetに対応するキーがあるかチェック
+        const targetValue = fileTarget[key] || "";
+
+        // リストアイテムを追加
+        translatedList.push({
+          key,
+          sourceValue,
+          targetValue,
+        });
+      });
+
+      // 生成したリストをセット
+      setTranslate({ list: translatedList });
     }
-  }, [fileTarget, setTranslateTarget]);
+  }, [fileSource, fileTarget, setTranslate]);
 }
