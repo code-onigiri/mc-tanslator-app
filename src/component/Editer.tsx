@@ -14,7 +14,7 @@ export default function Editer() {
   const setFileTargetValue = translateData((state) => state.settranslateTarget);
 
   // ユーザーが textarea を編集した時のハンドラ
-  const handleChange = (e: any) => {
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newTargetValue = e.target.value;
 
     // EditerStore 内の値を更新
