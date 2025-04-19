@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { TargetFileOpen, SourceFileOpen } from "../util/file/fileopen";
 import { FileSaveButton } from "../util/file/filesave";
+import { ProjectSaveButton } from "../util/file/projectfile-open-save";
 
 export default function Menu() {
   const [isOpen, setIsOpen] = useState(false);
@@ -159,6 +160,10 @@ export default function Menu() {
                     />
                   </div>
                 </div>
+              </div>
+
+              <div className="menu-section">
+                <ProjectSaveButton />
               </div>
 
               {/* 将来的な拡張用に空のセクションを用意しておく */}
