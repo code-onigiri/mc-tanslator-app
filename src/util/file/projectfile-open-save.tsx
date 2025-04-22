@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { toast } from "react-hot-toast";
 import {
   createProjectFile,
@@ -7,6 +6,7 @@ import {
   saveProjectFile,
   isValidProjectFile,
 } from "./projectfile";
+import { InfoDialog } from "../dialog"; // 共通ダイアログをインポート
 
 export function ProjectSaveButton() {
   const [projectName, setProjectName] = useState<string>("");
@@ -121,42 +121,58 @@ export function ProjectSaveButton() {
         </div>
       </div>
 
-      {/* プロジェクト名入力ダイアログ */}
-      {showNameDialog && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-          <motion.div
-            className="bg-base-100 rounded-lg p-6 w-80 shadow-xl"
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
-          >
-            <h3 className="text-lg font-bold mb-4">プロジェクト名を入力</h3>
-            <input
-              type="text"
-              value={projectName}
-              onChange={(e) => setProjectName(e.target.value)}
-              className="input input-bordered w-full mb-4"
-              placeholder="My Minecraft Translation Project"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === "Enter") saveProject();
-                if (e.key === "Escape") setShowNameDialog(false);
-              }}
-            />
-            <div className="flex justify-end gap-2">
-              <button
-                className="btn btn-ghost"
-                onClick={() => setShowNameDialog(false)}
-              >
-                キャンセル
-              </button>
-              <button className="btn btn-primary" onClick={saveProject}>
-                保存
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
+      {/* 共通ダイアログコンポーネントを使用 */}
+      <ProjectNameDialog
+        isOpen={showNameDialog}
+        onClose={() => setShowNameDialog(false)}
+        projectName={projectName}
+        setProjectName={setProjectName}
+        onSave={saveProject}
+      />
     </>
+  );
+}
+
+// プロジェクト名入力ダイアログを共通化
+interface ProjectNameDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  projectName: string;
+  setProjectName: (name: string) => void;
+  onSave: () => void;
+}
+
+function ProjectNameDialog({
+  isOpen,
+  onClose,
+  projectName,
+  setProjectName,
+  onSave,
+}: ProjectNameDialogProps) {
+  // InfoDialogをカスタマイズして表示
+  return (
+    <InfoDialog
+      title="プロジェクト名を入力"
+      isOpen={isOpen}
+      onClose={onClose}
+      okmessage="保存"
+      onOk={onSave}
+      message={
+        <>
+          <input
+            type="text"
+            value={projectName}
+            onChange={(e) => setProjectName(e.target.value)}
+            className="input input-bordered w-full"
+            placeholder="My Minecraft Translation Project"
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === "Enter") onSave();
+              if (e.key === "Escape") onClose();
+            }}
+          />
+        </>
+      }
+    />
   );
 }
