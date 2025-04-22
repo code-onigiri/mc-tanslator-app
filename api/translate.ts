@@ -1,8 +1,5 @@
 import { translate } from "@vitalets/google-translate-api";
-import { HttpProxyAgent } from "http-proxy-agent";
-
 export const config = {
-  runtime: "nodejs",
   maxDuration: 30, // 最大30秒の実行時間
 };
 
@@ -26,13 +23,9 @@ export default async function handler(request: Request) {
       });
     }
 
-    // プロキシを使用する場合（レート制限対策）
-    // const agent = new HttpProxyAgent('http://yourproxyhere:port');
-
     const result = await translate(text, {
       from: from || "auto",
       to: to || "en",
-      // fetchOptions: { agent }, // プロキシを使用する場合はコメントを外す
     });
 
     return new Response(
