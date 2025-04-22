@@ -5,15 +5,6 @@ import toast from "react-hot-toast";
 // 言語コードの型を定義
 type LanguageCode = "auto" | "en" | "ja" | "zh" | "fr";
 
-// 言語名のマッピング
-const languageMap: Record<string, string> = {
-  en: "英語",
-  ja: "日本語",
-  zh: "中国語",
-  fr: "フランス語",
-  // 他の言語も必要に応じて追加
-};
-
 function Translator() {
   // 原文と翻訳文の状態
   const [sourceText, setSourceText] = useState("");
@@ -25,11 +16,6 @@ function Translator() {
 
   // 翻訳中ローディング状態
   const [isTranslating, setIsTranslating] = useState(false);
-
-  // 言語コードから言語名を取得する関数
-  const getLanguageName = (code: string): string => {
-    return languageMap[code] || code;
-  };
 
   // 翻訳実行
   const handleTranslate = async () => {
@@ -54,21 +40,16 @@ function Translator() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "翻訳に失敗しました");
+        throw new Error("翻訳リクエストに失敗しました");
       }
 
-      const data = await response.json();
-      setTranslatedText(data.translatedText);
+      // レスポンスをテキストとして取得
+      const textResponse = await response.text();
 
-      // もし言語が自動検出の場合、検出された言語を表示
-      if (sourceLanguage === "auto" && data.detectedLanguage) {
-        toast.success(
-          `検出された言語: ${getLanguageName(data.detectedLanguage)}`,
-        );
-      } else {
-        toast.success("翻訳が完了しました");
-      }
+      // ここでJSONとしてパースしようとせず、直接テキストを使用
+      setTranslatedText(textResponse);
+
+      toast.success("翻訳が完了しました");
     } catch (error: unknown) {
       console.error("Translation error:", error);
 
