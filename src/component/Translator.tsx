@@ -44,7 +44,7 @@ function Translator() {
       }
 
       // レスポンスをテキストとして取得
-      const textResponse = await response.text();
+      const textResponse: string = await response.text();
 
       // ここでJSONとしてパースしようとせず、直接テキストを使用
       setTranslatedText(textResponse);
