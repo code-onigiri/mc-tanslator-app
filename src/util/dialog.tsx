@@ -6,9 +6,16 @@ interface DialogOverlayProps {
   children: React.ReactNode;
   onClose: () => void;
   isOpen: boolean;
+  // 背景を表示するかどうかのオプションを追加
+  showBackground?: boolean;
 }
 
-function DialogOverlay({ children, onClose, isOpen }: DialogOverlayProps) {
+function DialogOverlay({
+  children,
+  onClose,
+  isOpen,
+  showBackground = true, // デフォルトは表示する
+}: DialogOverlayProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
 
   // ESCキーでダイアログを閉じる
@@ -48,7 +55,10 @@ function DialogOverlay({ children, onClose, isOpen }: DialogOverlayProps) {
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+          // 背景の透明度を条件に応じて変更
+          className={`fixed inset-0 z-50 flex items-center justify-center ${
+            showBackground ? "bg-black/50" : ""
+          }`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -119,8 +129,9 @@ interface InfoDialogProps {
   message: React.ReactNode;
   okmessage: string;
   onClose: () => void;
-  onOk?: () => void; // オプショナルにして、指定がなければonCloseと同じ処理を実行
+  onOk?: () => void;
   isOpen: boolean;
+  showBackground?: boolean; // 追加
 }
 
 interface CheckDialogProps {
@@ -132,8 +143,10 @@ interface CheckDialogProps {
   onOk: () => void;
   onClose: () => void;
   isOpen: boolean;
+  showBackground?: boolean; // 追加
 }
 
+// InfoDialogコンポーネントも修正
 export function InfoDialog({
   title,
   message,
@@ -141,6 +154,7 @@ export function InfoDialog({
   onClose,
   onOk,
   isOpen,
+  showBackground = true,
 }: InfoDialogProps) {
   const handleOk = () => {
     if (onOk) onOk();
@@ -148,7 +162,11 @@ export function InfoDialog({
   };
 
   return (
-    <DialogOverlay onClose={onClose} isOpen={isOpen}>
+    <DialogOverlay
+      onClose={onClose}
+      isOpen={isOpen}
+      showBackground={showBackground}
+    >
       <DialogCard onClose={onClose}>
         <div className="card-body">
           <h2 className="card-title">{title}</h2>
@@ -179,6 +197,7 @@ export function CheckDialog({
   onOk,
   onClose,
   isOpen,
+  showBackground = true,
 }: CheckDialogProps) {
   const handleCancel = () => {
     onCancel();
@@ -191,7 +210,11 @@ export function CheckDialog({
   };
 
   return (
-    <DialogOverlay onClose={onClose} isOpen={isOpen}>
+    <DialogOverlay
+      onClose={onClose}
+      isOpen={isOpen}
+      showBackground={showBackground}
+    >
       <DialogCard onClose={onClose}>
         <div className="card-body">
           <h2 className="card-title">{title}</h2>
