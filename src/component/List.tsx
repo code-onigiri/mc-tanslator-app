@@ -36,6 +36,18 @@ const highlightText = (text: string, query: string): React.ReactNode => {
 // フィルターのタイプ定義
 type FilterType = "all" | "translated" | "untranslated";
 
+// 未翻訳アイテムを判定する関数（原文と翻訳文が一致する場合も未翻訳とみなす）
+const isUntranslated = (
+  sourceValue: string,
+  targetValue: string | undefined,
+): boolean => {
+  return (
+    !targetValue ||
+    targetValue.trim() === "" ||
+    targetValue.trim() === sourceValue.trim()
+  );
+};
+
 export default function TranslationList() {
   useSyncTranslateData();
 
@@ -73,15 +85,15 @@ export default function TranslationList() {
   const translatedCount = useMemo(() => {
     if (!translateData || !translateData.list) return 0;
     return translateData.list.filter(
-      (item) => item.targetValue && item.targetValue.trim() !== "",
+      (item) => !isUntranslated(item.sourceValue, item.targetValue),
     ).length;
   }, [translateData]);
 
   // 未翻訳項目の計算
   const untranslatedCount = useMemo(() => {
     if (!translateData || !translateData.list) return 0;
-    return translateData.list.filter(
-      (item) => !item.targetValue || item.targetValue.trim() === "",
+    return translateData.list.filter((item) =>
+      isUntranslated(item.sourceValue, item.targetValue),
     ).length;
   }, [translateData]);
 
@@ -101,11 +113,11 @@ export default function TranslationList() {
     // フィルターに基づいて項目をフィルタリング
     if (activeFilter === "translated") {
       filteredList = filteredList.filter(
-        (item) => item.targetValue && item.targetValue.trim() !== "",
+        (item) => !isUntranslated(item.sourceValue, item.targetValue),
       );
     } else if (activeFilter === "untranslated") {
-      filteredList = filteredList.filter(
-        (item) => !item.targetValue || item.targetValue.trim() === "",
+      filteredList = filteredList.filter((item) =>
+        isUntranslated(item.sourceValue, item.targetValue),
       );
     }
 
@@ -143,6 +155,10 @@ export default function TranslationList() {
     style: React.CSSProperties;
   }) => {
     const item = filteredItems[index];
+    const isItemUntranslated = isUntranslated(
+      item.sourceValue,
+      item.targetValue,
+    );
 
     return (
       <div
@@ -171,14 +187,19 @@ export default function TranslationList() {
           {/* 翻訳対象の値 */}
           <div className="text-sm pl-2 truncate">
             <span className="text-xs text-accent mr-1">訳:</span>
-            {item.targetValue ? (
+            {!isItemUntranslated ? (
               searchQuery ? (
                 highlightText(truncateText(item.targetValue, 40), searchQuery)
               ) : (
                 truncateText(item.targetValue, 40)
               )
             ) : (
-              <span className="italic opacity-50">未翻訳</span>
+              <span className="italic opacity-50">
+                {item.targetValue &&
+                item.targetValue.trim() === item.sourceValue.trim()
+                  ? "原文と同じ（未翻訳）"
+                  : "未翻訳"}
+              </span>
             )}
           </div>
         </>

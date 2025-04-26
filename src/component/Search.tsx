@@ -1,13 +1,72 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useListStore } from "./stores/ListStore";
+import { CheckDialog, InfoDialog } from "../util/dialog";
+import { item } from "./stores/ListStore";
 
 export function Search() {
   const [isopenchangewindow, setopenchangewindow] = useState(false);
+  const [replaceText, setReplaceText] = useState("");
+  const [isBulkReplaceDialogOpen, setIsBulkReplaceDialogOpen] = useState(false);
+  const [replaceResult, setReplaceResult] = useState<{
+    count: number;
+    isOpen: boolean;
+  }>({ count: 0, isOpen: false });
+
+  // トランスレートデータとセッター
+  const translateData = useListStore((state) => state.translate);
+  const setTranslate = useListStore((state) => state.setTranslate);
+  const searchQuery = useListStore((state) => state.searchQuery);
+  const setSearchQuery = useListStore((state) => state.setSearchQuery);
+
   const changewindows = () => setopenchangewindow(!isopenchangewindow);
 
-  const setquery = useListStore((state) => state.setSearchQuery);
-  const query = useListStore((state) => state.searchQuery);
+  // 一括置き換えを実行する関数
+  const executeBulkReplace = () => {
+    if (
+      !translateData ||
+      !translateData.list ||
+      !searchQuery.trim() ||
+      !replaceText
+    ) {
+      return;
+    }
+
+    let count = 0;
+    const newList = translateData.list.map((item: item) => {
+      // ターゲット値のいずれかに検索クエリが含まれる場合に置換
+      const newTargetValue = item.targetValue
+        ? item.targetValue.replace(new RegExp(searchQuery, "gi"), replaceText)
+        : "";
+
+      // 変更があった場合にカウント
+      if (newTargetValue !== item.targetValue) {
+        count++;
+      }
+
+      return {
+        ...item,
+        targetValue: newTargetValue,
+      };
+    });
+
+    // 更新があった場合のみデータを更新
+    if (count > 0) {
+      setTranslate({ list: newList });
+      setReplaceResult({ count: count, isOpen: true });
+    } else {
+      setReplaceResult({ count: 0, isOpen: true });
+    }
+  };
+
+  // 置き換え確認ダイアログを表示する関数
+  const showConfirmDialog = () => {
+    if (!searchQuery.trim()) {
+      setReplaceResult({ count: 0, isOpen: true });
+      return;
+    }
+    setIsBulkReplaceDialogOpen(true);
+  };
 
   return (
     <div className="card rounded-md">
@@ -25,8 +84,8 @@ export function Search() {
           <input
             type="text"
             placeholder="Search..."
-            value={query}
-            onChange={(e) => setquery(e.target.value)}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
         </label>
         <button className="btn btn-square mr-2" onClick={changewindows}>
@@ -68,17 +127,88 @@ export function Search() {
             }}
           >
             <label className="mx-2 input" style={{ width: "90%" }}>
-              <input type="text" placeholder="Replace..." />
+              <input
+                type="text"
+                placeholder="Replace..."
+                value={replaceText}
+                onChange={(e) => setReplaceText(e.target.value)}
+              />
             </label>
             <div className="flex justify-end mr-2 mt-2 gap-2">
               {" "}
-              {/* ボタン用の右揃えコンテナ */}
-              <button className="btn btn-sm">確認置き換え</button>
-              <button className="btn btn-sm">一括置き換え</button>
+              <button
+                className="btn btn-sm"
+                disabled={!searchQuery.trim() || !replaceText.trim()}
+              >
+                確認置き換え
+              </button>
+              <button
+                className="btn btn-sm btn-primary"
+                onClick={showConfirmDialog}
+                disabled={!searchQuery.trim() || !replaceText.trim()}
+              >
+                一括置き換え
+              </button>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* 一括置き換え確認ダイアログ */}
+      <CheckDialog
+        title="一括置き換えの確認"
+        message={
+          <div>
+            <p>
+              「<span className="font-bold text-primary">{searchQuery}</span>
+              」を 「
+              <span className="font-bold text-accent">{replaceText}</span>」に
+              一括置き換えします。
+            </p>
+            <p className="mt-2 text-sm text-warning">
+              この操作は元に戻せません。続行しますか？
+            </p>
+          </div>
+        }
+        cancelmessage="キャンセル"
+        okmessage="置き換え実行"
+        onCancel={() => setIsBulkReplaceDialogOpen(false)}
+        onOk={() => {
+          executeBulkReplace();
+          setIsBulkReplaceDialogOpen(false);
+        }}
+        onClose={() => setIsBulkReplaceDialogOpen(false)}
+        isOpen={isBulkReplaceDialogOpen}
+      />
+
+      {/* 置き換え結果ダイアログ */}
+      <InfoDialog
+        title="置き換え結果"
+        message={
+          replaceResult.count > 0 ? (
+            <div>
+              <p>
+                「<span className="font-bold text-primary">{searchQuery}</span>
+                」を 「
+                <span className="font-bold text-accent">{replaceText}</span>」に
+                <span className="font-bold"> {replaceResult.count}件 </span>
+                置き換えました。
+              </p>
+            </div>
+          ) : (
+            <div>
+              <p className="text-warning">
+                {!searchQuery.trim()
+                  ? "検索語が入力されていません。"
+                  : "置き換え可能なテキストが見つかりませんでした。"}
+              </p>
+            </div>
+          )
+        }
+        okmessage="OK"
+        onClose={() => setReplaceResult({ ...replaceResult, isOpen: false })}
+        isOpen={replaceResult.isOpen}
+      />
     </div>
   );
 }
