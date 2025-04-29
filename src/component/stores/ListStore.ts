@@ -19,6 +19,8 @@ interface ListStoreState {
   setTranslate: (data: listData | null) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
+  replaceQuery: string;
+  setReplaceQuery: (query: string) => void;
   listindex: number;
   setlistindex: (index: number) => void;
 }
@@ -30,6 +32,9 @@ export const useListStore = create<ListStoreState>((set) => ({
   //検索
   searchQuery: "",
   setSearchQuery: (query: string) => set({ searchQuery: query }),
+  //置き換え時のクエリ
+  replaceQuery: "",
+  setReplaceQuery: (query: string) => set({ replaceQuery: query }),
   //リスト位置
   listindex: 400,
   setlistindex: (index: number) => set({ listindex: index }),

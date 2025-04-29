@@ -5,14 +5,17 @@ import { useListStore, useSyncTranslateData } from "./stores/ListStore";
 import { useediter } from "./stores/EditerStore";
 import { Search } from "./Search";
 
+type FilterType = "all" | "translated" | "untranslated";
+
 // テキストを省略する関数
+// 指定された最大文字数を超える場合、末尾に"..."を追加して省略表示します
 const truncateText = (text: string, maxLength: number = 50): string => {
   if (text.length <= maxLength) return text;
-  //長かった場合...をつける
   return text.substring(0, maxLength) + "...";
 };
 
 // テキストをハイライトする関数
+// 検索クエリに一致する部分をハイライト表示します
 const highlightText = (text: string, query: string): React.ReactNode => {
   if (!query.trim()) return <>{text}</>;
 
@@ -33,10 +36,8 @@ const highlightText = (text: string, query: string): React.ReactNode => {
   );
 };
 
-// フィルターのタイプ定義
-type FilterType = "all" | "translated" | "untranslated";
-
-// 未翻訳アイテムを判定する関数（原文と翻訳文が一致する場合も未翻訳とみなす）
+// 未翻訳アイテムを判定する関数
+// 翻訳文が空、または原文と一致する場合は未翻訳とみなします
 const isUntranslated = (
   sourceValue: string,
   targetValue: string | undefined,
@@ -51,12 +52,13 @@ const isUntranslated = (
 export default function TranslationList() {
   useSyncTranslateData();
 
-  // アクティブなフィルターの状態
+  // アクティブなフィルターの状態を管理
   const [activeFilter, setActiveFilter] = React.useState<FilterType>("all");
 
-  // Zustand ストアから翻訳データを取得
+  // Zustand ストアから必要なデータを取得
   const translateData = useListStore((state) => state.translate);
   const searchQuery = useListStore((state) => state.searchQuery);
+  const replaceQuery = useListStore((state) => state.replaceQuery);
   const listindex = useListStore((state) => state.listindex);
   const listRef = useRef<FixedSizeList<any>>(null);
 
@@ -65,7 +67,7 @@ export default function TranslationList() {
   const setsourcevalue = useediter((state) => state.setSourceValue);
   const settargetvalue = useediter((state) => state.setTargetValue);
 
-  // イベントハンドラをuseCallbackで定義
+  // リストアイテム選択時の処理
   const handleItemSelect = useCallback(
     (key: string, sourceValue: string, targetValue: string) => {
       setkey(key);
@@ -75,13 +77,14 @@ export default function TranslationList() {
     [setkey, setsourcevalue, settargetvalue],
   );
 
+  // リストのスクロール位置をリセット
   useEffect(() => {
     if (listRef.current) {
       listRef.current.scrollToItem(listindex);
     }
   }, [listindex]);
 
-  // 翻訳済み項目の計算
+  // 翻訳済み項目の数を計算
   const translatedCount = useMemo(() => {
     if (!translateData || !translateData.list) return 0;
     return translateData.list.filter(
@@ -89,7 +92,7 @@ export default function TranslationList() {
     ).length;
   }, [translateData]);
 
-  // 未翻訳項目の計算
+  // 未翻訳項目の数を計算
   const untranslatedCount = useMemo(() => {
     if (!translateData || !translateData.list) return 0;
     return translateData.list.filter((item) =>
@@ -97,20 +100,19 @@ export default function TranslationList() {
     ).length;
   }, [translateData]);
 
-  // 総数の計算
+  // 総項目数を計算
   const totalCount = useMemo(() => {
     if (!translateData || !translateData.list) return 0;
     return translateData.list.length;
   }, [translateData]);
 
-  // 表示するべきアイテム
+  // フィルターと検索クエリに基づいて表示するアイテムを決定
   const filteredItems = useMemo(() => {
     if (!translateData || !translateData.list) return [];
 
-    // まずフィルターを適用
     let filteredList = translateData.list;
 
-    // フィルターに基づいて項目をフィルタリング
+    // フィルターを適用
     if (activeFilter === "translated") {
       filteredList = filteredList.filter(
         (item) => !isUntranslated(item.sourceValue, item.targetValue),
@@ -121,7 +123,14 @@ export default function TranslationList() {
       );
     }
 
-    // 検索クエリがある場合はさらにフィルタリング
+    // 置き換えモード用のフィルタリング
+    if (replaceQuery.trim()) {
+      filteredList = filteredList.filter((item) =>
+        item.targetValue?.toLowerCase().includes(replaceQuery.toLowerCase()),
+      );
+    }
+
+    // 検索クエリを適用
     if (searchQuery.trim()) {
       return filteredList.filter(
         (item) =>
@@ -132,9 +141,9 @@ export default function TranslationList() {
     }
 
     return filteredList;
-  }, [translateData, searchQuery, activeFilter]);
+  }, [translateData, replaceQuery, searchQuery, activeFilter]);
 
-  // データがない場合のプレースホルダー
+  // データがない場合のプレースホルダーを表示
   if (!translateData || !translateData.list) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-8 text-center">
