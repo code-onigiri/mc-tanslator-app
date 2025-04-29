@@ -3,9 +3,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { TargetFileOpen, SourceFileOpen } from "../util/file/fileopen";
 import { FileSaveButton } from "../util/file/filesave";
 import { ProjectSaveButton } from "../util/file/projectfile-open-save";
+import { InfoDialog } from "../util/dialog";
+import { translateData } from "../util/file/fileop";
 
 export default function Menu() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isUntranslatedDialogOpen, setIsUntranslatedDialogOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // メニュー外クリックで閉じる - React式
@@ -34,6 +38,29 @@ export default function Menu() {
   // メニュー開閉のトグル
   const toggleMenu = () => {
     setIsOpen(!isOpen);
+  };
+
+  const handleReplaceTranslations = () => {
+    const sourceData = translateData.getState().translateSource;
+    if (sourceData) {
+      translateData.setState({ translateTarget: { ...sourceData } });
+    }
+    setIsDialogOpen(false);
+  };
+
+  const handleReplaceUntranslated = () => {
+    const sourceData = translateData.getState().translateSource;
+    const targetData = translateData.getState().translateTarget;
+    if (sourceData && targetData) {
+      const updatedTarget = { ...targetData };
+      Object.keys(sourceData).forEach((key) => {
+        if (!updatedTarget[key] || updatedTarget[key].trim() === "") {
+          updatedTarget[key] = sourceData[key];
+        }
+      });
+      translateData.setState({ translateTarget: updatedTarget });
+    }
+    setIsUntranslatedDialogOpen(false);
   };
 
   return (
@@ -166,19 +193,42 @@ export default function Menu() {
                 <ProjectSaveButton />
               </div>
 
-              {/* 将来的な拡張用に空のセクションを用意しておく */}
-              {/* <div className="h-px bg-base-300 w-full"></div>
-
+              {/* 翻訳文を原文に置き換えるボタン */}
               <div className="menu-section">
-                <h3 className="text-sm font-bold mb-2 text-primary">
-                  その他
-                </h3>
-                <div className="pl-1">
-                  <button className="btn btn-sm w-full">
-                    ヘルプ
+                <h3 className="text-sm font-bold mb-2 text-primary">翻訳操作</h3>
+                <div className="pl-1 space-y-2">
+                  <button
+                    className="btn btn-warning w-full"
+                    onClick={() => setIsDialogOpen(true)}
+                  >
+                    翻訳文を原文に置き換える
+                  </button>
+                  <button
+                    className="btn btn-warning w-full"
+                    onClick={() => setIsUntranslatedDialogOpen(true)}
+                  >
+                    未翻訳文を原文に置き換える
                   </button>
                 </div>
-              </div> */}
+              </div>
+
+              {/* 確認ダイアログ */}
+              <InfoDialog
+                title="確認"
+                message="翻訳文をすべて原文に置き換えます。よろしいですか？"
+                okmessage="置き換える"
+                onClose={() => setIsDialogOpen(false)}
+                onOk={handleReplaceTranslations}
+                isOpen={isDialogOpen}
+              />
+              <InfoDialog
+                title="確認"
+                message="未翻訳文を原文に置き換えます。よろしいですか？"
+                okmessage="置き換える"
+                onClose={() => setIsUntranslatedDialogOpen(false)}
+                onOk={handleReplaceUntranslated}
+                isOpen={isUntranslatedDialogOpen}
+              />
             </div>
           </motion.div>
         )}
