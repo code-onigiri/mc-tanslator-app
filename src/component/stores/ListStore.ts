@@ -19,8 +19,17 @@ interface ListStoreState {
   setTranslate: (data: listData | null) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
+  replaceQuery: string;
+  setReplaceQuery: (query: string) => void;
   listindex: number;
   setlistindex: (index: number) => void;
+  // 確認しながら置き換え用の追加プロパティ
+  isConfirmReplaceMode: boolean; 
+  setConfirmReplaceMode: (isMode: boolean) => void;
+  replaceItems: item[];
+  setReplaceItems: (items: item[]) => void;
+  currentReplaceIndex: number;
+  setCurrentReplaceIndex: (index: number) => void;
 }
 
 export const useListStore = create<ListStoreState>((set) => ({
@@ -30,9 +39,19 @@ export const useListStore = create<ListStoreState>((set) => ({
   //検索
   searchQuery: "",
   setSearchQuery: (query: string) => set({ searchQuery: query }),
+  //置き換え時のクエリ
+  replaceQuery: "",
+  setReplaceQuery: (query: string) => set({ replaceQuery: query }),
   //リスト位置
   listindex: 400,
   setlistindex: (index: number) => set({ listindex: index }),
+  // 確認しながら置き換え用の状態
+  isConfirmReplaceMode: false,
+  setConfirmReplaceMode: (isMode: boolean) => set({ isConfirmReplaceMode: isMode }),
+  replaceItems: [],
+  setReplaceItems: (items: item[]) => set({ replaceItems: items }),
+  currentReplaceIndex: 0,
+  setCurrentReplaceIndex: (index: number) => set({ currentReplaceIndex: index }),
 }));
 
 /**

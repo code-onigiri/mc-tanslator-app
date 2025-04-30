@@ -1,6 +1,9 @@
+// ファイルを開くためのコンポーネント
+// 翻訳元または翻訳対象のデータを読み込むUIを提供
 import { translateData } from "./fileop";
 import type { JsonData, FileComments } from "./fileop";
 
+// 翻訳対象ファイルを開くコンポーネント
 export function TargetFileOpen() {
   return (
     <input
@@ -13,6 +16,7 @@ export function TargetFileOpen() {
   );
 }
 
+// 翻訳対象ファイルの変更イベントを処理
 function handleTargetFileChange(event: React.ChangeEvent<HTMLInputElement>) {
   const file = event.target.files?.[0];
 
@@ -22,28 +26,18 @@ function handleTargetFileChange(event: React.ChangeEvent<HTMLInputElement>) {
 
   reader.onload = (e) => {
     try {
-      // ファイルの拡張子を取得
-      const extension = file.name.split(".").pop()?.toLowerCase();
+      const extension = file.name.split(".").pop()?.toLowerCase(); // ファイル拡張子を取得
 
       if (extension === "json") {
-        // JSONファイルの内容をパース
-        const jsonData = JSON.parse(e.target?.result as string) as JsonData;
-
-        // Zustandストアのアクションを呼び出す
+        const jsonData = JSON.parse(e.target?.result as string) as JsonData; // JSONをパース
         const { settranslateTarget } = translateData.getState();
-        settranslateTarget(jsonData);
-
+        settranslateTarget(jsonData); // Zustandストアを更新
         console.log("JSONファイルが正常に読み込まれました");
       } else if (extension === "lang") {
-        // .langファイルをパース
-        const { data, comments } = parseLangFile(e.target?.result as string);
-
-        // データとコメントを保存
-        const { settranslateTarget, setTargetComments } =
-          translateData.getState();
+        const { data, comments } = parseLangFile(e.target?.result as string); // .langファイルをパース
+        const { settranslateTarget, setTargetComments } = translateData.getState();
         settranslateTarget(data);
         setTargetComments(comments);
-
         console.log(".langファイルが正常に読み込まれました");
       } else {
         throw new Error("サポートされていないファイル形式です");
@@ -60,6 +54,7 @@ function handleTargetFileChange(event: React.ChangeEvent<HTMLInputElement>) {
   reader.readAsText(file);
 }
 
+// 翻訳元ファイルを開くコンポーネント
 export function SourceFileOpen() {
   return (
     <input
@@ -72,6 +67,7 @@ export function SourceFileOpen() {
   );
 }
 
+// 翻訳元ファイルの変更イベントを処理
 function handleSourceFileChange(event: React.ChangeEvent<HTMLInputElement>) {
   const file = event.target.files?.[0];
 
@@ -81,28 +77,18 @@ function handleSourceFileChange(event: React.ChangeEvent<HTMLInputElement>) {
 
   reader.onload = (e) => {
     try {
-      // ファイルの拡張子を取得
-      const extension = file.name.split(".").pop()?.toLowerCase();
+      const extension = file.name.split(".").pop()?.toLowerCase(); // ファイル拡張子を取得
 
       if (extension === "json") {
-        // JSONファイルの内容をパース
-        const jsonData = JSON.parse(e.target?.result as string) as JsonData;
-
-        // Zustandストアのアクションを呼び出す
+        const jsonData = JSON.parse(e.target?.result as string) as JsonData; // JSONをパース
         const { settranslateSource } = translateData.getState();
-        settranslateSource(jsonData);
-
+        settranslateSource(jsonData); // Zustandストアを更新
         console.log("JSONファイルが正常に読み込まれました");
       } else if (extension === "lang") {
-        // .langファイルをパース
-        const { data, comments } = parseLangFile(e.target?.result as string);
-
-        // データとコメントを保存
-        const { settranslateSource, setSourceComments } =
-          translateData.getState();
+        const { data, comments } = parseLangFile(e.target?.result as string); // .langファイルをパース
+        const { settranslateSource, setSourceComments } = translateData.getState();
         settranslateSource(data);
         setSourceComments(comments);
-
         console.log(".langファイルが正常に読み込まれました");
       } else {
         throw new Error("サポートされていないファイル形式です");
@@ -131,47 +117,34 @@ function parseLangFile(content: string): {
   const data: JsonData = {};
   const comments: FileComments = {};
 
-  // 行ごとに分割
-  const lines = content.split("\n");
+  const lines = content.split("\n"); // 行ごとに分割
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
 
-    // 空行はスキップ
-    if (line === "") continue;
+    if (line === "") continue; // 空行はスキップ
 
-    // コメント行の処理
     if (line.startsWith("#")) {
-      // コメントを保存
-      // コメントの関連付け方法:
-      // 1. 直後にキーが続く場合はそのキーに関連付ける
-      // 2. それ以外は通し番号で保存
-      const commentContent = line.substring(1).trim();
-
-      // 次の行がキー=値の形式かチェック
+      const commentContent = line.substring(1).trim(); // コメント内容を取得
       const nextLine = i + 1 < lines.length ? lines[i + 1].trim() : "";
       const isNextLineKeyValue =
         nextLine && nextLine.includes("=") && !nextLine.startsWith("#");
 
       if (isNextLineKeyValue) {
-        // 次の行のキーを取得
         const nextKey = nextLine.substring(0, nextLine.indexOf("=")).trim();
-        comments[`key:${nextKey}`] = commentContent;
+        comments[`key:${nextKey}`] = commentContent; // 次のキーに関連付け
       } else {
-        // 通し番号でコメントを保存
-        comments[`line:${i}`] = commentContent;
+        comments[`line:${i}`] = commentContent; // 通し番号で保存
       }
 
       continue;
     }
 
-    // key=valueの形式をパース
     const separatorIndex = line.indexOf("=");
     if (separatorIndex !== -1) {
       const key = line.substring(0, separatorIndex).trim();
       const value = line.substring(separatorIndex + 1).trim();
-
-      data[key] = value;
+      data[key] = value; // key=value形式をパース
     }
   }
 

@@ -5,7 +5,9 @@ import Glossary from "./Glossary";
 import AITranslator from "./AITranslator";
 import Translator from "./Translator";
 import { useGlossaryStore } from "./stores/GlossaryStore";
+import { useListStore } from "./stores/ListStore";
 import toast from "react-hot-toast";
+import { eventBus, REPLACE_EVENTS } from "../util/eventBus";
 
 // テキストをハイライトする関数
 const highlightText = (text: string, query: string): React.ReactNode => {
@@ -34,11 +36,16 @@ export default function Editer() {
     "glossary" | "translator" | "ai-translator"
   >("glossary");
 
+  // 置き換え用の状態
+  const searchQuery = useListStore((state) => state.searchQuery);
+  const replaceQuery = useListStore((state) => state.replaceQuery);
+
   // EditerStoreからのステート取得
   const key = useediter((state) => state.key);
   const sourceValue = useediter((state) => state.sourcevalue);
   const targetValue = useediter((state) => state.targetvalue);
   const setTargetValue = useediter((state) => state.setTargetValue);
+  const isReplaceMode = useediter((state) => state.isReplaceMode);
 
   // fileop ストアからデータと更新関数を取得
   const fileTargetValue = translateData((state) => state.translateTarget);
@@ -104,11 +111,29 @@ export default function Editer() {
     setTargetValue(newTargetValue);
 
     // 翻訳データが存在する場合、翻訳データストアも同時に更新
-    if (fileTargetValue && key !== "none") {
+    if (fileTargetValue && key !== "none" && !isReplaceMode) {
       const updatedTargets = { ...fileTargetValue };
       updatedTargets[key] = newTargetValue;
       setFileTargetValue(updatedTargets);
     }
+  };
+
+  // 置換モードを終了する関数
+  const cancelReplaceMode = () => {
+    // イベントバスを通してキャンセルを通知
+    eventBus.emit(REPLACE_EVENTS.CANCEL_REPLACE_MODE);
+  };
+
+  // 現在のアイテムを置換する関数
+  const replaceCurrentItem = () => {
+    // イベントバスを通して置換を通知
+    eventBus.emit(REPLACE_EVENTS.REPLACE_CURRENT);
+  };
+
+  // 置換をスキップする関数
+  const skipCurrentReplace = () => {
+    // イベントバスを通してスキップを通知
+    eventBus.emit(REPLACE_EVENTS.SKIP_CURRENT);
   };
 
   // タブの内容をレンダリングする関数
@@ -144,25 +169,76 @@ export default function Editer() {
           {sourceValue}
         </div>
         <div className="mt-4 text-lg">翻訳文:</div>
-        <textarea
-          className="text-lg rounded-md p-4 bg-base-200 w-full h-fit mb-4"
-          value={targetValue}
-          onChange={handleChange}
-        />
+        
+        {isReplaceMode ? (
+          // 置換モード時は差分表示
+          <div className="flex flex-col gap-2">
+            {/* 元のテキスト - 赤色ハイライト */}
+            <div className="text-lg rounded-md p-4 bg-red-50 border border-red-200 w-full h-fit">
+              <div dangerouslySetInnerHTML={{ 
+                __html: targetValue.replace(
+                  new RegExp(searchQuery, 'gi'), 
+                  (match) => `<span class="bg-red-200 text-red-900">${match}</span>`
+                )
+              }} />
+            </div>
+            
+            {/* 置換後のテキスト - 緑色ハイライト */}
+            <div className="text-lg rounded-md p-4 bg-green-50 border border-green-200 w-full h-fit">
+              <div dangerouslySetInnerHTML={{ 
+                __html: targetValue.replace(
+                  new RegExp(searchQuery, 'gi'), 
+                  () => `<span class="bg-green-200 text-green-900">${replaceQuery}</span>`
+                )
+              }} />
+            </div>
+            
+            {/* 置換操作ボタン */}
+            <div className="flex justify-end gap-2 my-2">
+              <button 
+                className="btn btn-error btn-sm" 
+                onClick={cancelReplaceMode}
+              >
+                キャンセル
+              </button>
+              <button 
+                className="btn btn-warning btn-sm"
+                onClick={skipCurrentReplace}
+              >
+                スキップ
+              </button>
+              <button 
+                className="btn btn-success btn-sm"
+                onClick={replaceCurrentItem}
+              >
+                置き換え
+              </button>
+            </div>
+          </div>
+        ) : (
+          // 通常モードは編集可能なテキストエリア
+          <textarea
+            className="text-lg rounded-md p-4 bg-base-200 w-full h-fit mb-4"
+            value={targetValue}
+            onChange={handleChange}
+          />
+        )}
 
-        {/* 現在の原文と翻訳文を用語集に追加するボタン */}
-        <div className="mb-4">
-          <button
-            className="btn btn-primary w-full"
-            onClick={addCurrentTextToGlossary}
-            disabled={!sourceValue || !targetValue}
-          >
-            この原文と翻訳文を用語集に登録
-          </button>
-        </div>
+        {/* 置換モード以外では用語集追加ボタンを表示 */}
+        {!isReplaceMode && (
+          <div className="mb-4">
+            <button
+              className="btn btn-primary w-full"
+              onClick={addCurrentTextToGlossary}
+              disabled={!sourceValue || !targetValue}
+            >
+              この原文と翻訳文を用語集に登録
+            </button>
+          </div>
+        )}
 
         {/* 関連する用語集を表示 */}
-        {relevantGlossaryEntries.length > 0 && (
+        {relevantGlossaryEntries.length > 0 && !isReplaceMode && (
           <div className="mt-2 p-4 bg-base-200 rounded-md">
             <h3 className="text-md font-semibold mb-3">
               テキストに含まれる用語 ({relevantGlossaryEntries.length}件)

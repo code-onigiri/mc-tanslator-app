@@ -1,20 +1,20 @@
 import React, { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-// 共通のダイアログ背景オーバーレイコンポーネント
+// ダイアログの共通コンポーネント
+// モーダルダイアログの背景オーバーレイ
 interface DialogOverlayProps {
-  children: React.ReactNode;
-  onClose: () => void;
-  isOpen: boolean;
-  // 背景を表示するかどうかのオプションを追加
-  showBackground?: boolean;
+  children: React.ReactNode; // ダイアログの内容
+  onClose: () => void; // ダイアログを閉じる関数
+  isOpen: boolean; // ダイアログの表示状態
+  showBackground?: boolean; // 背景を表示するかどうか（デフォルトは表示）
 }
 
 function DialogOverlay({
   children,
   onClose,
   isOpen,
-  showBackground = true, // デフォルトは表示する
+  showBackground = true, // デフォルトで背景を表示
 }: DialogOverlayProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -33,7 +33,6 @@ function DialogOverlay({
   // フォーカストラップの実装
   useEffect(() => {
     if (isOpen && dialogRef.current) {
-      // ダイアログが開いたときにフォーカスをダイアログに移動
       const focusableElements = dialogRef.current.querySelectorAll(
         'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
       );
@@ -55,7 +54,6 @@ function DialogOverlay({
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          // 背景の透明度を条件に応じて変更
           className={`fixed inset-0 z-50 flex items-center justify-center ${
             showBackground ? "bg-black/50" : ""
           }`}
@@ -79,7 +77,7 @@ function DialogOverlay({
   );
 }
 
-// 閉じるボタンを共通コンポーネント化
+// 閉じるボタンの共通コンポーネント
 const CloseButton = ({ onClose }: { onClose: () => void }) => (
   <button
     onClick={onClose}
@@ -99,10 +97,10 @@ const CloseButton = ({ onClose }: { onClose: () => void }) => (
   </button>
 );
 
-// 共通のダイアログカードコンポーネント
+// ダイアログカードの共通コンポーネント
 interface DialogCardProps {
-  children: React.ReactNode;
-  onClose: () => void;
+  children: React.ReactNode; // ダイアログの内容
+  onClose: () => void; // ダイアログを閉じる関数
 }
 
 const DialogCard = ({ children, onClose }: DialogCardProps) => (
@@ -124,29 +122,17 @@ const DialogCard = ({ children, onClose }: DialogCardProps) => (
   </motion.div>
 );
 
+// 情報ダイアログのコンポーネント
 interface InfoDialogProps {
-  title: string;
-  message: React.ReactNode;
-  okmessage: string;
-  onClose: () => void;
-  onOk?: () => void;
-  isOpen: boolean;
-  showBackground?: boolean; // 追加
+  title: string; // ダイアログのタイトル
+  message: React.ReactNode; // ダイアログのメッセージ
+  okmessage: string; // OKボタンのラベル
+  onClose: () => void; // ダイアログを閉じる関数
+  onOk?: () => void; // OKボタンのクリック時の処理
+  isOpen: boolean; // ダイアログの表示状態
+  showBackground?: boolean; // 背景を表示するかどうか
 }
 
-interface CheckDialogProps {
-  title: string;
-  message: React.ReactNode;
-  cancelmessage: string;
-  okmessage: string;
-  onCancel: () => void;
-  onOk: () => void;
-  onClose: () => void;
-  isOpen: boolean;
-  showBackground?: boolean; // 追加
-}
-
-// InfoDialogコンポーネントも修正
 export function InfoDialog({
   title,
   message,
@@ -186,6 +172,19 @@ export function InfoDialog({
       </DialogCard>
     </DialogOverlay>
   );
+}
+
+// 確認ダイアログのコンポーネント
+interface CheckDialogProps {
+  title: string; // ダイアログのタイトル
+  message: React.ReactNode; // ダイアログのメッセージ
+  cancelmessage: string; // キャンセルボタンのラベル
+  okmessage: string; // OKボタンのラベル
+  onCancel: () => void; // キャンセルボタンのクリック時の処理
+  onOk: () => void; // OKボタンのクリック時の処理
+  onClose: () => void; // ダイアログを閉じる関数
+  isOpen: boolean; // ダイアログの表示状態
+  showBackground?: boolean; // 背景を表示するかどうか
 }
 
 export function CheckDialog({

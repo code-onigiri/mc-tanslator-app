@@ -1,3 +1,4 @@
+// プロジェクトファイルの保存と読み込みを管理するコンポーネント
 import { useState } from "react";
 import { toast } from "react-hot-toast";
 import {
@@ -8,9 +9,10 @@ import {
 } from "./projectfile";
 import { InfoDialog } from "../dialog"; // 共通ダイアログをインポート
 
+// プロジェクト保存ボタンのコンポーネント
 export function ProjectSaveButton() {
-  const [projectName, setProjectName] = useState<string>("");
-  const [showNameDialog, setShowNameDialog] = useState<boolean>(false);
+  const [projectName, setProjectName] = useState<string>(""); // プロジェクト名の状態
+  const [showNameDialog, setShowNameDialog] = useState<boolean>(false); // ダイアログ表示状態
 
   // プロジェクト名入力ダイアログを表示
   const handleProjectSave = () => {
@@ -25,8 +27,8 @@ export function ProjectSaveButton() {
     }
 
     try {
-      const projectFile = createProjectFile(projectName);
-      saveProjectFile(projectFile);
+      const projectFile = createProjectFile(projectName); // プロジェクトファイルを作成
+      saveProjectFile(projectFile); // ファイルを保存
       toast.success("プロジェクトを保存しました");
       setShowNameDialog(false);
       setProjectName("");
@@ -57,7 +59,7 @@ export function ProjectSaveButton() {
           return;
         }
 
-        loadProjectFile(projectData);
+        loadProjectFile(projectData); // プロジェクトデータを読み込み
         toast.success(`プロジェクト "${projectData.name}" を読み込みました`);
       } catch (error) {
         console.error("プロジェクト読み込みエラー:", error);
@@ -135,11 +137,11 @@ export function ProjectSaveButton() {
 
 // プロジェクト名入力ダイアログを共通化
 interface ProjectNameDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  projectName: string;
-  setProjectName: (name: string) => void;
-  onSave: () => void;
+  isOpen: boolean; // ダイアログの表示状態
+  onClose: () => void; // ダイアログを閉じる関数
+  projectName: string; // プロジェクト名
+  setProjectName: (name: string) => void; // プロジェクト名を設定する関数
+  onSave: () => void; // 保存処理を実行する関数
 }
 
 function ProjectNameDialog({

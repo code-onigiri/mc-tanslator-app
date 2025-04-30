@@ -7,6 +7,10 @@ interface editer {
   setkey: (key: string) => void;
   setSourceValue: (sourcevalue: string) => void;
   setTargetValue: (targetvalue: string) => void;
+  isReplaceMode?: boolean;
+  setReplaceMode: (isReplaceMode: boolean) =>void;
+  indexInReplaceMode: number;
+  setIndexInReplaceMode: (index:number) => void;
 }
 
 export const useediter = create<editer>((set) => ({
@@ -19,4 +23,8 @@ export const useediter = create<editer>((set) => ({
       sourcevalue,
     })),
   setTargetValue: (targetvalue: string) => set(() => ({ targetvalue })),
+  isReplaceMode: false,
+  setReplaceMode: (isReplaceMode: boolean) => set(() => ({ isReplaceMode })),
+  indexInReplaceMode: 0,
+  setIndexInReplaceMode: (index: number) => set(() => ({ indexInReplaceMode: index })),
 }));

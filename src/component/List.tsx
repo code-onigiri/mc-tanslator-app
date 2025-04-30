@@ -5,14 +5,17 @@ import { useListStore, useSyncTranslateData } from "./stores/ListStore";
 import { useediter } from "./stores/EditerStore";
 import { Search } from "./Search";
 
+type FilterType = "all" | "translated" | "untranslated";
+
 // テキストを省略する関数
+// 指定された最大文字数を超える場合、末尾に"..."を追加して省略表示します
 const truncateText = (text: string, maxLength: number = 50): string => {
   if (text.length <= maxLength) return text;
-  //長かった場合...をつける
   return text.substring(0, maxLength) + "...";
 };
 
 // テキストをハイライトする関数
+// 検索クエリに一致する部分をハイライト表示します
 const highlightText = (text: string, query: string): React.ReactNode => {
   if (!query.trim()) return <>{text}</>;
 
@@ -33,96 +36,161 @@ const highlightText = (text: string, query: string): React.ReactNode => {
   );
 };
 
-// フィルターのタイプ定義
-type FilterType = "all" | "translated" | "untranslated";
+// 未翻訳アイテムを判定する関数
+// 翻訳文が空、または原文と一致する場合は未翻訳とみなします
+const isUntranslated = (
+  sourceValue: string,
+  targetValue: string | undefined,
+): boolean => {
+  return (
+    !targetValue ||
+    targetValue.trim() === "" ||
+    targetValue.trim() === sourceValue.trim()
+  );
+};
 
 export default function TranslationList() {
   useSyncTranslateData();
 
-  // アクティブなフィルターの状態
+  // アクティブなフィルターの状態を管理
   const [activeFilter, setActiveFilter] = React.useState<FilterType>("all");
 
-  // Zustand ストアから翻訳データを取得
+  // Zustand ストアから必要なデータを取得
   const translateData = useListStore((state) => state.translate);
   const searchQuery = useListStore((state) => state.searchQuery);
+  const replaceQuery = useListStore((state) => state.replaceQuery);
   const listindex = useListStore((state) => state.listindex);
+  const replaceItems = useListStore((state) => state.replaceItems);
+  const currentReplaceIndex = useListStore((state) => state.currentReplaceIndex);
   const listRef = useRef<FixedSizeList<any>>(null);
 
   // エディターストアのセッター関数を取得
   const setkey = useediter((state) => state.setkey);
   const setsourcevalue = useediter((state) => state.setSourceValue);
   const settargetvalue = useediter((state) => state.setTargetValue);
+  const isReplaceMode = useediter((state) => state.isReplaceMode);
+  const indexInReplaceMode = useediter((state) => state.indexInReplaceMode);
+  const setIndexInReplaceMode = useediter((state) => state.setIndexInReplaceMode);
 
-  // イベントハンドラをuseCallbackで定義
+  // フィルターと検索クエリに基づいて表示するアイテムを決定
+  const filteredItems = useMemo(() => {
+    if (!translateData || !translateData.list) return [];
+
+    console.log("フィルター実行", { 
+      activeFilter, 
+      searchQuery, 
+      replaceQuery,
+      isReplaceMode,
+      totalItems: translateData.list.length 
+    });
+
+    let filteredList = translateData.list;
+
+    // 置き換えモード中は置き換え対象のアイテムのみを表示
+    if (isReplaceMode && replaceItems.length > 0) {
+      return replaceItems;
+    }
+
+    // フィルターを適用
+    if (activeFilter === "translated") {
+      filteredList = filteredList.filter(
+        (item) => !isUntranslated(item.sourceValue, item.targetValue),
+      );
+    } else if (activeFilter === "untranslated") {
+      filteredList = filteredList.filter((item) =>
+        isUntranslated(item.sourceValue, item.targetValue),
+      );
+    }
+
+    // 検索クエリを適用
+    if (searchQuery && searchQuery.trim()) {
+      const query = searchQuery.trim().toLowerCase();
+      return filteredList.filter(
+        (item) =>
+          (item.key && item.key.toLowerCase().includes(query)) ||
+          (item.sourceValue && item.sourceValue.toLowerCase().includes(query)) ||
+          (item.targetValue && item.targetValue.toLowerCase().includes(query))
+      );
+    }
+
+    // 置き換えモード用のフィルタリング
+    if (replaceQuery && replaceQuery.trim()) {
+      filteredList = filteredList.filter((item) =>
+        item.targetValue && item.targetValue.toLowerCase().includes(replaceQuery.toLowerCase())
+      );
+    }
+
+    return filteredList;
+  }, [translateData, searchQuery, replaceQuery, activeFilter, isReplaceMode, replaceItems]);
+
+  // リストアイテム選択時の処理
   const handleItemSelect = useCallback(
     (key: string, sourceValue: string, targetValue: string) => {
+      // アイテムの値は常に更新
       setkey(key);
       setsourcevalue(sourceValue);
       settargetvalue(targetValue);
+      
+      // 置き換えモード中の場合、選択したアイテムに対応するインデックスを更新
+      if (isReplaceMode && replaceItems.length > 0) {
+        const selectedItemIndex = replaceItems.findIndex(item => item.key === key);
+        if (selectedItemIndex !== -1) {
+          // 選択したアイテムが置き換え対象リスト内にある場合、現在のインデックスを更新
+          const setCurrentIndex = useListStore.getState().setCurrentReplaceIndex;
+          setCurrentIndex(selectedItemIndex);
+          setIndexInReplaceMode(selectedItemIndex);
+        }
+      }
     },
-    [setkey, setsourcevalue, settargetvalue],
+    [setkey, setsourcevalue, settargetvalue, isReplaceMode, replaceItems, setIndexInReplaceMode],
   );
+  
+  // 置き換えモード中のアイテムに戻る
+  const returnToReplaceItem = useCallback(() => {
+    if (isReplaceMode && replaceItems.length > 0 && currentReplaceIndex < replaceItems.length) {
+      const currentItem = replaceItems[currentReplaceIndex];
+      setkey(currentItem.key);
+      setsourcevalue(currentItem.sourceValue);
+      settargetvalue(currentItem.targetValue);
+      
+      // スクロール位置も更新
+      const itemIndex = filteredItems.findIndex(item => item.key === currentItem.key);
+      if (itemIndex >= 0 && listRef.current) {
+        listRef.current.scrollToItem(itemIndex);
+      }
+    }
+  }, [isReplaceMode, replaceItems, currentReplaceIndex, filteredItems, setkey, setsourcevalue, settargetvalue]);
 
+  // リストのスクロール位置をリセット
   useEffect(() => {
     if (listRef.current) {
       listRef.current.scrollToItem(listindex);
     }
   }, [listindex]);
 
-  // 翻訳済み項目の計算
+  // 翻訳済み項目の数を計算
   const translatedCount = useMemo(() => {
     if (!translateData || !translateData.list) return 0;
     return translateData.list.filter(
-      (item) => item.targetValue && item.targetValue.trim() !== "",
+      (item) => !isUntranslated(item.sourceValue, item.targetValue),
     ).length;
   }, [translateData]);
 
-  // 未翻訳項目の計算
+  // 未翻訳項目の数を計算
   const untranslatedCount = useMemo(() => {
     if (!translateData || !translateData.list) return 0;
-    return translateData.list.filter(
-      (item) => !item.targetValue || item.targetValue.trim() === "",
+    return translateData.list.filter((item) =>
+      isUntranslated(item.sourceValue, item.targetValue),
     ).length;
   }, [translateData]);
 
-  // 総数の計算
+  // 総項目数を計算
   const totalCount = useMemo(() => {
     if (!translateData || !translateData.list) return 0;
     return translateData.list.length;
   }, [translateData]);
 
-  // 表示するべきアイテム
-  const filteredItems = useMemo(() => {
-    if (!translateData || !translateData.list) return [];
-
-    // まずフィルターを適用
-    let filteredList = translateData.list;
-
-    // フィルターに基づいて項目をフィルタリング
-    if (activeFilter === "translated") {
-      filteredList = filteredList.filter(
-        (item) => item.targetValue && item.targetValue.trim() !== "",
-      );
-    } else if (activeFilter === "untranslated") {
-      filteredList = filteredList.filter(
-        (item) => !item.targetValue || item.targetValue.trim() === "",
-      );
-    }
-
-    // 検索クエリがある場合はさらにフィルタリング
-    if (searchQuery.trim()) {
-      return filteredList.filter(
-        (item) =>
-          item.key.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.sourceValue.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.targetValue?.toLowerCase().includes(searchQuery.toLowerCase()),
-      );
-    }
-
-    return filteredList;
-  }, [translateData, searchQuery, activeFilter]);
-
-  // データがない場合のプレースホルダー
+  // データがない場合のプレースホルダーを表示
   if (!translateData || !translateData.list) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-8 text-center">
@@ -143,21 +211,52 @@ export default function TranslationList() {
     style: React.CSSProperties;
   }) => {
     const item = filteredItems[index];
+    const isItemUntranslated = isUntranslated(
+      item.sourceValue,
+      item.targetValue,
+    );
+
+    // 置き換え処理中のアイテムかどうかを判定
+    const isReplaceTargetItem = isReplaceMode && replaceItems.some(
+      (replaceItem) => replaceItem.key === item.key
+    );
+
+    // 現在処理中の置き換えアイテムかどうかを判定
+    const isCurrentReplaceItem = isReplaceMode && 
+      replaceItems.length > 0 && 
+      currentReplaceIndex < replaceItems.length && 
+      replaceItems[currentReplaceIndex]?.key === item.key;
 
     return (
       <div
         style={style}
-        className={`flex flex-col p-3 border-b border-base-300 hover:bg-base-200 transition-colors cursor-pointer`}
+        className={`flex flex-col p-3 border-b border-base-300 transition-colors cursor-pointer ${
+          isCurrentReplaceItem 
+            ? 'bg-base-300' 
+            : isReplaceTargetItem 
+              ? 'bg-base-200'
+              : 'hover:bg-base-200'
+        }`}
         onClick={(_) =>
           handleItemSelect(item.key, item.sourceValue, item.targetValue)
         }
       >
         <>
           {/* キー */}
-          <div className="text-sm font-medium text-primary mb-1 truncate">
-            {searchQuery
-              ? highlightText(truncateText(item.key, 50), searchQuery)
-              : truncateText(item.key, 50)}
+          <div className="text-sm font-medium text-primary mb-1 truncate flex items-center justify-between">
+            <span>
+              {searchQuery
+                ? highlightText(truncateText(item.key, 50), searchQuery)
+                : truncateText(item.key, 50)}
+            </span>
+            {isCurrentReplaceItem && (
+              <span className="badge badge-sm ml-2">
+                置換処理中 {currentReplaceIndex + 1}/{replaceItems.length}
+              </span>
+            )}
+            {isReplaceTargetItem && !isCurrentReplaceItem && (
+              <span className="badge badge-outline badge-sm ml-2">置換対象</span>
+            )}
           </div>
 
           {/* 翻訳元の値 */}
@@ -171,14 +270,19 @@ export default function TranslationList() {
           {/* 翻訳対象の値 */}
           <div className="text-sm pl-2 truncate">
             <span className="text-xs text-accent mr-1">訳:</span>
-            {item.targetValue ? (
+            {!isItemUntranslated ? (
               searchQuery ? (
                 highlightText(truncateText(item.targetValue, 40), searchQuery)
               ) : (
                 truncateText(item.targetValue, 40)
               )
             ) : (
-              <span className="italic opacity-50">未翻訳</span>
+              <span className="italic opacity-50">
+                {item.targetValue &&
+                item.targetValue.trim() === item.sourceValue.trim()
+                  ? "原文と同じ（未翻訳）"
+                  : "未翻訳"}
+              </span>
             )}
           </div>
         </>
@@ -192,6 +296,22 @@ export default function TranslationList() {
       <div className="flex flex-col w-full h-full">
         {/* 検索バー */}
         <Search />
+        
+        {/* 置き換えモード中の操作バー */}
+        {isReplaceMode && replaceItems.length > 0 && (
+          <div className="flex items-center justify-between bg-accent bg-opacity-10 p-2 mb-2 rounded-md">
+            <div className="text-sm">
+              置き換え処理中: {currentReplaceIndex + 1} / {replaceItems.length}
+            </div>
+            <button 
+              className="btn btn-sm btn-accent"
+              onClick={returnToReplaceItem}
+            >
+              置き換え処理に戻る
+            </button>
+          </div>
+        )}
+        
         {/* 検索結果カウント */}
         {searchQuery && (
           <div className="text-xs text-right pr-3 text-info-content">
