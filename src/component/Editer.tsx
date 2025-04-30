@@ -173,22 +173,22 @@ export default function Editer() {
         {isReplaceMode ? (
           // 置換モード時は差分表示
           <div className="flex flex-col gap-2">
-            {/* 元のテキスト - 赤色ハイライト */}
-            <div className="text-lg rounded-md p-4 bg-red-50 border border-red-200 w-full h-fit">
+            {/* 元のテキスト - エラーカラーでハイライト */}
+            <div className="text-lg rounded-md p-4 bg-error/10 border border-error/20 w-full h-fit">
               <div dangerouslySetInnerHTML={{ 
                 __html: targetValue.replace(
                   new RegExp(searchQuery, 'gi'), 
-                  (match) => `<span class="bg-red-200 text-red-900">${match}</span>`
+                  (match) => `<span class="bg-error/30 text-base-content font-bold">${match}</span>`
                 )
               }} />
             </div>
             
-            {/* 置換後のテキスト - 緑色ハイライト */}
-            <div className="text-lg rounded-md p-4 bg-green-50 border border-green-200 w-full h-fit">
+            {/* 置換後のテキスト - 成功カラーでハイライト */}
+            <div className="text-lg rounded-md p-4 bg-success/10 border border-success/20 w-full h-fit">
               <div dangerouslySetInnerHTML={{ 
                 __html: targetValue.replace(
                   new RegExp(searchQuery, 'gi'), 
-                  () => `<span class="bg-green-200 text-green-900">${replaceQuery}</span>`
+                  () => `<span class="bg-success/30 text-base-content font-bold">${replaceQuery}</span>`
                 )
               }} />
             </div>
@@ -211,7 +211,7 @@ export default function Editer() {
                 className="btn btn-success btn-sm"
                 onClick={replaceCurrentItem}
               >
-                置き換え
+                置換
               </button>
             </div>
           </div>

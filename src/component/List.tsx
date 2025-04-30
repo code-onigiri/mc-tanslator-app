@@ -299,8 +299,8 @@ export default function TranslationList() {
         
         {/* 置き換えモード中の操作バー */}
         {isReplaceMode && replaceItems.length > 0 && (
-          <div className="flex items-center justify-between bg-accent bg-opacity-10 p-2 mb-2 rounded-md">
-            <div className="text-sm">
+          <div className="alert shadow-sm bg-accent/10 text-accent-content p-2 mb-2 rounded-md">
+            <div className="text-sm text-base-content">
               置き換え処理中: {currentReplaceIndex + 1} / {replaceItems.length}
             </div>
             <button 
