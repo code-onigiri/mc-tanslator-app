@@ -8,6 +8,8 @@ import { useGlossaryStore } from "./stores/GlossaryStore";
 import { useListStore } from "./stores/ListStore";
 import toast from "react-hot-toast";
 import { eventBus, REPLACE_EVENTS } from "../util/eventBus";
+import ColorCodeText from "./ColorCodeText";
+import ColorCodeToolbar from "./ColorCodeToolbar";
 
 // テキストをハイライトする関数
 const highlightText = (text: string, query: string): React.ReactNode => {
@@ -35,6 +37,12 @@ export default function Editer() {
   const [activeTab, setActiveTab] = useState<
     "glossary" | "translator" | "ai-translator"
   >("glossary");
+
+  // カラーコードツールバーの表示状態
+  const [showColorCodeToolbar, setShowColorCodeToolbar] = useState(false);
+
+  // テキストエリアの参照
+  const [textareaRef, setTextareaRef] = useState<HTMLTextAreaElement | null>(null);
 
   // 置き換え用の状態
   const searchQuery = useListStore((state) => state.searchQuery);
@@ -136,6 +144,33 @@ export default function Editer() {
     eventBus.emit(REPLACE_EVENTS.SKIP_CURRENT);
   };
 
+  // カラーコード挿入機能
+  const handleInsertColorCode = (code: string) => {
+    if (textareaRef) {
+      const start = textareaRef.selectionStart;
+      const end = textareaRef.selectionEnd;
+      const newValue = targetValue.substring(0, start) + code + targetValue.substring(end);
+      
+      // 値を更新
+      setTargetValue(newValue);
+      
+      // 翻訳データが存在する場合、翻訳データストアも同時に更新
+      if (fileTargetValue && key !== "none" && !isReplaceMode) {
+        const updatedTargets = { ...fileTargetValue };
+        updatedTargets[key] = newValue;
+        setFileTargetValue(updatedTargets);
+      }
+      
+      // カーソル位置を更新
+      setTimeout(() => {
+        if (textareaRef) {
+          textareaRef.selectionStart = textareaRef.selectionEnd = start + code.length;
+          textareaRef.focus();
+        }
+      }, 0);
+    }
+  };
+
   // タブの内容をレンダリングする関数
   const renderTabContent = () => {
     switch (activeTab) {
@@ -157,108 +192,139 @@ export default function Editer() {
 
   return (
     <div className="flex flex-row bg-base-100 h-full">
-      <div className="w-2/3 rounded-sm p-2 flex flex-col">
+      <div className="w-2/3 rounded-sm p-2 flex flex-col overflow-y-auto max-h-full">
         <div className="text-primary text-lg">
           key:
           <span className="text-primary text-lg rounded-md px-3 py-1 bg-base-200 w-full h-fit">
-            {key}
+        {key}
           </span>
         </div>
         <div className="mt-4 text-lg">原文:</div>
         <div className="text-lg rounded-md p-4 bg-base-200 w-full h-fit">
-          {sourceValue}
+          <ColorCodeText text={sourceValue} />
         </div>
         <div className="mt-4 text-lg">翻訳文:</div>
         
         {isReplaceMode ? (
           // 置換モード時は差分表示
           <div className="flex flex-col gap-2">
-            {/* 元のテキスト - エラーカラーでハイライト */}
-            <div className="text-lg rounded-md p-4 bg-error/10 border border-error/20 w-full h-fit">
-              <div dangerouslySetInnerHTML={{ 
-                __html: targetValue.replace(
-                  new RegExp(searchQuery, 'gi'), 
-                  (match) => `<span class="bg-error/30 text-base-content font-bold">${match}</span>`
-                )
-              }} />
-            </div>
-            
-            {/* 置換後のテキスト - 成功カラーでハイライト */}
-            <div className="text-lg rounded-md p-4 bg-success/10 border border-success/20 w-full h-fit">
-              <div dangerouslySetInnerHTML={{ 
-                __html: targetValue.replace(
-                  new RegExp(searchQuery, 'gi'), 
-                  () => `<span class="bg-success/30 text-base-content font-bold">${replaceQuery}</span>`
-                )
-              }} />
-            </div>
-            
-            {/* 置換操作ボタン */}
-            <div className="flex justify-end gap-2 my-2">
-              <button 
-                className="btn btn-error btn-sm" 
-                onClick={cancelReplaceMode}
-              >
-                キャンセル
-              </button>
-              <button 
-                className="btn btn-warning btn-sm"
-                onClick={skipCurrentReplace}
-              >
-                スキップ
-              </button>
-              <button 
-                className="btn btn-success btn-sm"
-                onClick={replaceCurrentItem}
-              >
-                置換
-              </button>
-            </div>
+        {/* 元のテキスト - エラーカラーでハイライト */}
+        <div className="text-lg rounded-md p-4 bg-error/10 border border-error/20 w-full h-fit">
+          <div dangerouslySetInnerHTML={{ 
+            __html: targetValue.replace(
+          new RegExp(searchQuery, 'gi'), 
+          (match) => `<span class="bg-error/30 text-base-content font-bold">${match}</span>`
+            )
+          }} />
+        </div>
+        
+        {/* 置換後のテキスト - 成功カラーでハイライト */}
+        <div className="text-lg rounded-md p-4 bg-success/10 border border-success/20 w-full h-fit">
+          <div dangerouslySetInnerHTML={{ 
+            __html: targetValue.replace(
+          new RegExp(searchQuery, 'gi'), 
+          () => `<span class="bg-success/30 text-base-content font-bold">${replaceQuery}</span>`
+            )
+          }} />
+        </div>
+        
+        {/* 置換操作ボタン */}
+        <div className="flex justify-end gap-2 my-2">
+          <button 
+            className="btn btn-error btn-sm" 
+            onClick={cancelReplaceMode}
+          >
+            キャンセル
+          </button>
+          <button 
+            className="btn btn-warning btn-sm"
+            onClick={skipCurrentReplace}
+          >
+            スキップ
+          </button>
+          <button 
+            className="btn btn-success btn-sm"
+            onClick={replaceCurrentItem}
+          >
+            置換
+          </button>
+        </div>
           </div>
         ) : (
-          // 通常モードは編集可能なテキストエリア
-          <textarea
-            className="text-lg rounded-md p-4 bg-base-200 w-full h-fit mb-4"
-            value={targetValue}
-            onChange={handleChange}
+          // 通常モードは編集可能なテキストエリアとプレビュー
+          <div className="mb-4">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-sm text-gray-600">翻訳文:</span>
+          <button
+            className="btn btn-xs btn-outline"
+            onClick={() => setShowColorCodeToolbar(!showColorCodeToolbar)}
+          >
+            カラーコード{showColorCodeToolbar ? '非表示' : '表示'}
+          </button>
+        </div>
+        
+        {/* カラーコードツールバー */}
+        {showColorCodeToolbar && (
+          <ColorCodeToolbar
+            onInsertCode={handleInsertColorCode}
+            className="mb-2"
           />
+        )}
+        
+        <textarea
+          ref={setTextareaRef}
+          className="text-lg rounded-md p-4 bg-base-200 w-full h-32 mb-2"
+          value={targetValue}
+          onChange={handleChange}
+          placeholder="翻訳文を入力してください... (§を使ってカラーコードを追加できます)"
+        />
+        {/* カラーコードプレビュー */}
+        {targetValue && (
+          <div className="mt-2">
+            <div className="text-sm text-gray-600 mb-1">プレビュー:</div>
+            <div className="text-lg rounded-md p-4 bg-base-100 border border-base-300 w-full min-h-[2rem]">
+          <ColorCodeText text={targetValue} />
+            </div>
+          </div>
+        )}
+          </div>
         )}
 
         {/* 置換モード以外では用語集追加ボタンを表示 */}
         {!isReplaceMode && (
           <div className="mb-4">
-            <button
-              className="btn btn-primary w-full"
-              onClick={addCurrentTextToGlossary}
-              disabled={!sourceValue || !targetValue}
-            >
-              この原文と翻訳文を用語集に登録
-            </button>
+        <button
+          className="btn btn-primary w-full"
+          onClick={addCurrentTextToGlossary}
+          disabled={!sourceValue || !targetValue}
+        >
+          この原文と翻訳文を用語集に登録
+        </button>
           </div>
         )}
 
         {/* 関連する用語集を表示 */}
         {relevantGlossaryEntries.length > 0 && !isReplaceMode && (
           <div className="mt-2 p-4 bg-base-200 rounded-md">
-            <h3 className="text-md font-semibold mb-3">
-              テキストに含まれる用語 ({relevantGlossaryEntries.length}件)
-            </h3>
-            <div className="max-h-60 overflow-y-auto">
-              {relevantGlossaryEntries.map((item, index) => (
-                <div
-                  key={index}
-                  className="mb-3 p-3 bg-base-100 rounded-md shadow-sm"
-                >
-                  <div className="font-medium text-primary">
-                    {highlightText(item.key, item.key)}
-                  </div>
-                  <div className="mt-1 pl-2 text-sm">
-                    <span className="text-xs text-accent mr-1">訳:</span>
-                    {item.value}
-                  </div>
-                </div>
-              ))}
+        <h3 className="text-md font-semibold mb-3">
+          テキストに含まれる用語 ({relevantGlossaryEntries.length}件)
+        </h3>
+        <div className="max-h-60 overflow-y-auto">
+          {relevantGlossaryEntries.map((item, index) => (
+            <div
+          key={index}
+          className="mb-3 p-3 bg-base-100 rounded-md shadow-sm"
+            >
+          <div className="font-medium text-primary">
+            {highlightText(item.key, item.key)}
+          </div>
+          <div className="mt-1 pl-2 text-sm">
+            <span className="text-xs text-accent mr-1">訳:</span>
+            {item.value}
+          </div>
             </div>
+          ))}
+        </div>
           </div>
         )}
       </div>

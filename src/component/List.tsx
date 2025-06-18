@@ -4,6 +4,7 @@ import AutoSizer from "react-virtualized-auto-sizer";
 import { useListStore, useSyncTranslateData } from "./stores/ListStore";
 import { useediter } from "./stores/EditerStore";
 import { Search } from "./Search";
+import ColorCodeText from "./ColorCodeText";
 
 type FilterType = "all" | "translated" | "untranslated";
 
@@ -62,6 +63,7 @@ export default function TranslationList() {
   const listindex = useListStore((state) => state.listindex);
   const replaceItems = useListStore((state) => state.replaceItems);
   const currentReplaceIndex = useListStore((state) => state.currentReplaceIndex);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const listRef = useRef<FixedSizeList<any>>(null);
 
   // エディターストアのセッター関数を取得
@@ -69,7 +71,7 @@ export default function TranslationList() {
   const setsourcevalue = useediter((state) => state.setSourceValue);
   const settargetvalue = useediter((state) => state.setTargetValue);
   const isReplaceMode = useediter((state) => state.isReplaceMode);
-  const indexInReplaceMode = useediter((state) => state.indexInReplaceMode);
+  // const indexInReplaceMode = useediter((state) => state.indexInReplaceMode);
   const setIndexInReplaceMode = useediter((state) => state.setIndexInReplaceMode);
 
   // フィルターと検索クエリに基づいて表示するアイテムを決定
@@ -237,7 +239,7 @@ export default function TranslationList() {
               ? 'bg-base-200'
               : 'hover:bg-base-200'
         }`}
-        onClick={(_) =>
+        onClick={() =>
           handleItemSelect(item.key, item.sourceValue, item.targetValue)
         }
       >
@@ -263,8 +265,13 @@ export default function TranslationList() {
           <div className="text-sm mb-1 pl-2 truncate">
             <span className="text-xs text-secondary mr-1">元:</span>
             {searchQuery
-              ? highlightText(truncateText(item.sourceValue, 40), searchQuery)
-              : truncateText(item.sourceValue, 40)}
+              ? highlightText(
+                  <ColorCodeText text={truncateText(item.sourceValue, 40)} className="inline" />,
+                  searchQuery
+                )
+              : (
+                <ColorCodeText text={truncateText(item.sourceValue, 40)} className="inline" />
+              )}
           </div>
 
           {/* 翻訳対象の値 */}
@@ -272,9 +279,12 @@ export default function TranslationList() {
             <span className="text-xs text-accent mr-1">訳:</span>
             {!isItemUntranslated ? (
               searchQuery ? (
-                highlightText(truncateText(item.targetValue, 40), searchQuery)
+                highlightText(
+                  <ColorCodeText text={truncateText(item.targetValue, 40)} className="inline" />,
+                  searchQuery
+                )
               ) : (
-                truncateText(item.targetValue, 40)
+                <ColorCodeText text={truncateText(item.targetValue, 40)} className="inline" />
               )
             ) : (
               <span className="italic opacity-50">
@@ -319,38 +329,45 @@ export default function TranslationList() {
           </div>
         )}
 
-        {/* タブ型フィルター */}
-        <div role="tablist" className="tabs tabs-border bg-base-200 mb-2">
-          <button
-            role="tab"
-            className={`tab ${activeFilter === "all" ? "tab-active" : ""} min-w-1/6 `}
-            onClick={() => setActiveFilter("all")}
-          >
-            全て{" "}
-            <span className="badge badge-sm badge-neutral ml-1">
-              {totalCount}
+        {/* ドロップダウンメニュー型フィルター */}
+        <div className="dropdown mb-2 w-full">
+          <div tabIndex={0} role="button" className="btn m-1 w-full justify-between">
+            <span>
+              {activeFilter === "all" ? "全て" : activeFilter === "translated" ? "翻訳済み" : "未翻訳"}
+              <span className="badge badge-sm ml-2">
+                {activeFilter === "all" ? totalCount : activeFilter === "translated" ? translatedCount : untranslatedCount}
+              </span>
             </span>
-          </button>
-          <button
-            role="tab"
-            className={`tab ${activeFilter === "translated" ? "tab-active" : ""} min-w-1/6`}
-            onClick={() => setActiveFilter("translated")}
-          >
-            翻訳済み{" "}
-            <span className="badge badge-sm badge-success ml-1">
-              {translatedCount}
-            </span>
-          </button>
-          <button
-            role="tab"
-            className={`tab ${activeFilter === "untranslated" ? "tab-active" : ""} min-w-1/6 `}
-            onClick={() => setActiveFilter("untranslated")}
-          >
-            未翻訳{" "}
-            <span className="badge badge-sm badge-warning ml-1">
-              {untranslatedCount}
-            </span>
-          </button>
+            <svg className="fill-current ml-2" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+              <path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z" />
+            </svg>
+          </div>
+          <ul tabIndex={0} className="dropdown-content z-[1] menu shadow bg-base-100 rounded-box w-52">
+            <li>
+              <a onClick={() => setActiveFilter("all")}>
+                全て
+                <span className="badge badge-sm badge-neutral ml-1">
+                  {totalCount}
+                </span>
+              </a>
+            </li>
+            <li>
+              <a onClick={() => setActiveFilter("translated")}>
+                翻訳済み
+                <span className="badge badge-sm badge-success ml-1">
+                  {translatedCount}
+                </span>
+              </a>
+            </li>
+            <li>
+              <a onClick={() => setActiveFilter("untranslated")}>
+                未翻訳
+                <span className="badge badge-sm badge-warning ml-1">
+                  {untranslatedCount}
+                </span>
+              </a>
+            </li>
+          </ul>
         </div>
 
         {/* リスト */}

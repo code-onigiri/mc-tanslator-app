@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
+import ColorCodeText from "./ColorCodeText";
 
 // 言語コードの型を定義
 type LanguageCode = "auto" | "en" | "ja" | "zh" | "fr";
@@ -151,12 +152,20 @@ function Translator() {
 
       {/* 翻訳結果表示エリア */}
       <div className="mb-6 form-control flex-1">
-        <textarea
-          className="textarea textarea-bordered h-full resize-none bg-base-200 text-base"
-          placeholder="翻訳結果がここに表示されます..."
-          value={translatedText}
-          readOnly
-        />
+        <div className="relative">
+          <textarea
+            className="textarea textarea-bordered h-full resize-none bg-base-200 text-base"
+            placeholder="翻訳結果がここに表示されます..."
+            value={translatedText}
+            readOnly
+          />
+          {/* カラーコードプレビューオーバーレイ */}
+          {translatedText && (
+            <div className="absolute top-0 left-0 right-0 bottom-0 p-3 pointer-events-none overflow-auto">
+              <ColorCodeText text={translatedText} className="text-base" />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* アクションボタンエリア */}
