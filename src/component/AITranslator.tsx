@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useediter } from "./stores/EditerStore";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
+import ColorCodeText from "./ColorCodeText";
 
 function Translator() {
   const sourceValue = useediter((state) => state.sourcevalue);
@@ -111,7 +112,7 @@ function Translator() {
         >
           <h3 className="text-md font-medium mb-2">翻訳結果:</h3>
           <div className="bg-base-200 p-3 rounded-md min-h-[100px] mb-3">
-            {translationResult}
+            <ColorCodeText text={translationResult} />
           </div>
 
           <button className="btn btn-success w-full" onClick={applyTranslation}>
