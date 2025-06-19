@@ -125,7 +125,7 @@ describe("AITranslator Component", () => {
 
     await waitFor(() => {
       expect(mockGoogleGenerativeAI).toHaveBeenCalledWith("fake-api-key");
-      expect(mockGetGenerativeModel).toHaveBeenCalledWith({ model: "gemini-pro" });
+      expect(mockGetGenerativeModel).toHaveBeenCalledWith({ model: "gemini-1.5-flash-latest" });
       expect(mockGenerateContent).toHaveBeenCalledWith(
         "Translate the following text to ja: Hello world"
       );
