@@ -3,6 +3,7 @@ import { useediter } from "./stores/EditerStore";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import ColorCodeText from "./ColorCodeText";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 function Translator() {
   const sourceValue = useediter((state) => state.sourcevalue);
@@ -14,37 +15,43 @@ function Translator() {
   const [isLoading, setIsLoading] = useState(false);
   // 選択された翻訳言語
   const [targetLanguage, setTargetLanguage] = useState("ja");
-  // 翻訳モデル
-  const [model, setModel] = useState("gpt-3.5");
 
-  // 翻訳実行の処理（モック）
-  const handleTranslate = () => {
+  // 翻訳実行の処理
+  const handleTranslate = async () => {
     if (!sourceValue.trim()) {
       toast.error("翻訳する原文がありません");
       return;
     }
 
+    const apiKey = localStorage.getItem("geminiApiKey");
+    if (!apiKey) {
+      toast.error(
+        "Gemini APIキーが設定されていません。設定メニューから登録してください。"
+      );
+      return;
+    }
+
     setIsLoading(true);
+    setTranslationResult(""); // Clear previous results
 
-    // APIコール処理の代わりにタイマーを使ったモック
-    setTimeout(() => {
-      // モック翻訳結果
-      let mockResult = "";
-      if (targetLanguage === "ja") {
-        mockResult =
-          "これはモックの翻訳結果です。実際のAPIが実装されたら、本物の翻訳が表示されます。";
-      } else if (targetLanguage === "en") {
-        mockResult =
-          "This is a mock translation result. When the actual API is implemented, a real translation will be displayed.";
-      } else {
-        mockResult =
-          "Ceci est un résultat de traduction simulé. Lorsque l'API réelle sera implémentée, une vraie traduction sera affichée.";
-      }
+    try {
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
-      setTranslationResult(mockResult);
-      setIsLoading(false);
+      const prompt = `Translate the following text to ${targetLanguage}: ${sourceValue}`;
+
+      const result = await model.generateContent(prompt);
+      const response = result.response;
+      const text = await response.text();
+
+      setTranslationResult(text);
       toast.success("翻訳が完了しました！");
-    }, 1500);
+    } catch (error) {
+      console.error("Error translating with Gemini:", error);
+      toast.error("翻訳中にエラーが発生しました。");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // 翻訳結果を適用する
@@ -73,23 +80,13 @@ function Translator() {
             onChange={(e) => setTargetLanguage(e.target.value)}
           >
             <option value="ja">日本語</option>
-            <option value="en">英語</option>
-            <option value="fr">フランス語</option>
-          </select>
-        </div>
-
-        <div className="form-control">
-          <label className="label">
-            <span className="label-text">翻訳モデル</span>
-          </label>
-          <select
-            className="select select-bordered w-full"
-            value={model}
-            onChange={(e) => setModel(e.target.value)}
-          >
-            <option value="gpt-3.5">GPT-3.5</option>
-            <option value="gpt-4">GPT-4</option>
-            <option value="custom">カスタムモデル</option>
+            <option value="en">English</option>
+            <option value="fr">Français</option>
+            <option value="es">Español</option>
+            <option value="de">Deutsch</option>
+            <option value="ko">한국어</option>
+            <option value="zh-CN">中文 (简体)</option>
+            {/* Add more languages as needed */}
           </select>
         </div>
       </div>
@@ -126,7 +123,7 @@ function Translator() {
         <div className="bg-base-200/50 p-3 rounded-md text-sm opacity-80">
           <p className="font-medium mb-1">使い方:</p>
           <ol className="list-decimal list-inside space-y-1">
-            <li>翻訳先言語とモデルを選択</li>
+            <li>翻訳先言語を選択</li>
             <li>「翻訳実行」をクリック</li>
             <li>結果を確認して「適用」</li>
           </ol>

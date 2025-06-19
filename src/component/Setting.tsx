@@ -5,6 +5,11 @@ export default function SettingsMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  // Gemini API Key State
+  const [geminiApiKey, setGeminiApiKey] = useState(() => {
+    return localStorage.getItem("geminiApiKey") || "";
+  });
+
   // 現在のテーマ状態
   const [isDarkMode, setIsDarkMode] = useState(() => {
     // ローカルストレージからテーマを取得するか、デフォルトでシステム設定に合わせる
@@ -20,7 +25,7 @@ export default function SettingsMenu() {
   // コンポーネントのマウント時にテーマを適用
   useEffect(() => {
     applyTheme(isDarkMode ? "dark" : "light");
-  }, []);
+  }, [isDarkMode]); // Added isDarkMode to dependency array
 
   // テーマを切り替える関数
   const toggleTheme = () => {
@@ -33,6 +38,18 @@ export default function SettingsMenu() {
   const applyTheme = (theme: string) => {
     document.documentElement.setAttribute("data-theme", theme);
     localStorage.setItem("theme", theme);
+  };
+
+  // Function to handle API key change
+  const handleApiKeyChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setGeminiApiKey(event.target.value);
+  };
+
+  // Function to save API key
+  const saveApiKey = () => {
+    localStorage.setItem("geminiApiKey", geminiApiKey);
+    // Optionally, add some user feedback like a toast notification
+    alert("API Key saved!");
   };
 
   // メニュー外クリックで閉じる
@@ -111,6 +128,32 @@ export default function SettingsMenu() {
             }}
           >
             <div className="space-y-3">
+              {/* Gemini API Key Input */}
+              <div>
+                <label
+                  htmlFor="gemini-api-key"
+                  className="block text-sm font-medium mb-1"
+                >
+                  Gemini API Key
+                </label>
+                <input
+                  type="password"
+                  id="gemini-api-key"
+                  value={geminiApiKey}
+                  onChange={handleApiKeyChange}
+                  className="w-full p-2 rounded-md bg-base-100 border border-base-300 focus:ring-primary focus:border-primary"
+                  placeholder="Enter your API Key"
+                />
+                <button
+                  onClick={saveApiKey}
+                  className="mt-2 w-full p-2 bg-primary text-primary-content rounded-md hover:bg-primary-focus transition-colors"
+                >
+                  Save API Key
+                </button>
+              </div>
+
+              <div className="h-px bg-base-300 w-full my-1"></div>
+
               {/* テーマ切り替え */}
               <div className="flex items-center justify-between py-1">
                 <div className="flex items-center gap-2">
@@ -162,8 +205,6 @@ export default function SettingsMenu() {
                   </div>
                 </label>
               </div>
-
-              <div className="h-px bg-base-300 w-full my-1"></div>
 
               {/* その他のメニュー項目 */}
               <div className="menu-item p-2 hover:bg-base-300 rounded-md transition-colors flex items-center gap-2">
