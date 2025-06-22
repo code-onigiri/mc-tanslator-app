@@ -2,8 +2,15 @@ import { Toaster } from "react-hot-toast";
 import Editer from "../component/Editer";
 import Header from "../component/Header";
 import SideBar from "../component/SideBar";
+import { useSettingsStore } from "../component/stores/SettingsStore";
 
 function Edit() {
+  // 設定ストアからレイアウト方向を取得
+  const layoutDirection = useSettingsStore((state) => state.layoutDirection);
+
+  // レイアウト方向に応じてコンポーネントの順序を決定
+  const isListLeft = layoutDirection === 'left-right';
+
   return (
     <div className="h-screen overflow-hidden">
       {/* Toasterコンポーネントを右下に配置し、表示時間を短く設定 */}
@@ -35,12 +42,27 @@ function Edit() {
         <Header />
       </header>
       <main className="h-[calc(100vh-32px)] flex flex-row">
-        <div className="flex-1/4">
-          <SideBar />
-        </div>
-        <div className="flex-3/4">
-          <Editer />
-        </div>
+        {isListLeft ? (
+          // リスト左・エディター右（デフォルト）
+          <>
+            <div className="flex-1/4">
+              <SideBar />
+            </div>
+            <div className="flex-3/4">
+              <Editer />
+            </div>
+          </>
+        ) : (
+          // エディター左・リスト右
+          <>
+            <div className="flex-3/4">
+              <Editer />
+            </div>
+            <div className="flex-1/4">
+              <SideBar />
+            </div>
+          </>
+        )}
       </main>
     </div>
   );

@@ -1,5 +1,6 @@
 import { JsonData, FileComments, translateData } from "./fileop";
 import { useGlossaryStore } from "../../component/stores/GlossaryStore";
+import { useListStore, item } from "../../component/stores/ListStore";
 
 // プロジェクトファイルの形式を定義
 // プロジェクトのメタデータや翻訳データを含む構造体
@@ -14,13 +15,14 @@ export interface ProjectFile {
     sourceComments: FileComments | null; // 翻訳元のコメント
     targetComments: FileComments | null; // 翻訳対象のコメント
     glossary: Array<{ key: string; value: string }>; // 用語集
+    itemTags?: { [key: string]: string[] }; // アイテムごとのタグ
   };
   metadata?: {
     sourceLang?: string; // 翻訳元の言語
     targetLang?: string; // 翻訳対象の言語
     description?: string; // プロジェクトの説明
     tags?: string[]; // タグ
-    [key: string]: any; // その他のメタデータ
+    [key: string]: unknown; // その他のメタデータ
   };
 }
 
@@ -36,6 +38,13 @@ export function createProjectFile(
 ): ProjectFile {
   const currentState = translateData.getState(); // Zustandストアから現在の状態を取得
   const glossary = useGlossaryStore.getState().glossary; // 用語集を取得
+  const list = useListStore.getState().translate?.list || [];
+  const itemTags: { [key: string]: string[] } = {};
+  list.forEach((item: item) => {
+    if (item.tags && item.tags.length > 0) {
+      itemTags[item.key] = item.tags;
+    }
+  });
 
   const now = new Date().toISOString(); // 現在の日時をISO形式で取得
 
@@ -50,6 +59,7 @@ export function createProjectFile(
       sourceComments: currentState.sourceComments,
       targetComments: currentState.targetComments,
       glossary: glossary,
+      itemTags: itemTags,
     },
     metadata: metadata || {
       sourceLang: "en",
@@ -97,6 +107,7 @@ export function loadProjectFile(projectFile: ProjectFile): void {
     sourceComments,
     targetComments,
     glossary,
+    itemTags,
   } = projectFile.data;
 
   // 翻訳データストアを更新
@@ -120,6 +131,14 @@ export function loadProjectFile(projectFile: ProjectFile): void {
   if (glossary && glossary.length > 0) {
     useGlossaryStore.getState().setGlossary(glossary);
   }
+
+  // ListStoreの更新はuseSyncTranslateDataに任せるが、
+  // itemTagsはここで処理する必要があるかもしれない。
+  // useSyncTranslateDataでprojectFileを直接読めるようにするか？
+  // → 今回は、ListStoreに一時的に保持させる。
+  if (itemTags) {
+    translateData.getState().setItemTags(itemTags);
+  }
 }
 
 /**
@@ -127,15 +146,19 @@ export function loadProjectFile(projectFile: ProjectFile): void {
  * @param data 検証するデータ
  * @returns 有効なプロジェクトファイルの場合はtrue
  */
-export function isValidProjectFile(data: any): data is ProjectFile {
+export function isValidProjectFile(data: unknown): data is ProjectFile {
+  if (typeof data !== "object" || data === null) {
+    return false;
+  }
+
+  const d = data as Record<string, unknown>;
+
   return (
-    data &&
-    typeof data === "object" &&
-    typeof data.version === "string" &&
-    typeof data.name === "string" &&
-    typeof data.createdAt === "string" &&
-    typeof data.updatedAt === "string" &&
-    data.data &&
-    typeof data.data === "object"
+    typeof d.version === "string" &&
+    typeof d.name === "string" &&
+    typeof d.createdAt === "string" &&
+    typeof d.updatedAt === "string" &&
+    typeof d.data === "object" &&
+    d.data !== null
   );
 }

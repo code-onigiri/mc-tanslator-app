@@ -24,13 +24,13 @@ const highlightText = (text: string, query: string): React.ReactNode => {
 
   return (
     <>
-      {parts.map((part, i) =>
+      {parts.map((part, index) =>
         part.toLowerCase() === query.toLowerCase() ? (
-          <span key={i} className="bg-yellow-200 text-black">
+          <span key={index} className="bg-warning text-warning-content">
             {part}
           </span>
         ) : (
-          <span key={i}>{part}</span>
+          <span key={index}>{part}</span>
         ),
       )}
     </>
@@ -55,6 +55,10 @@ export default function TranslationList() {
 
   // アクティブなフィルターの状態を管理
   const [activeFilter, setActiveFilter] = React.useState<FilterType>("all");
+  
+  // タグ追加ポップアップの状態
+  const [showAddTagModal, setShowAddTagModal] = React.useState(false);
+  const [newTagName, setNewTagName] = React.useState("");
 
   // Zustand ストアから必要なデータを取得
   const translateData = useListStore((state) => state.translate);
@@ -63,6 +67,10 @@ export default function TranslationList() {
   const listindex = useListStore((state) => state.listindex);
   const replaceItems = useListStore((state) => state.replaceItems);
   const currentReplaceIndex = useListStore((state) => state.currentReplaceIndex);
+  const allTags = useListStore((state) => state.allTags);
+  const tagFilter = useListStore((state) => state.tagFilter);
+  const setTagFilter = useListStore((state) => state.setTagFilter);
+  const setAllTags = useListStore((state) => state.setAllTags);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const listRef = useRef<FixedSizeList<any>>(null);
 
@@ -70,23 +78,22 @@ export default function TranslationList() {
   const setkey = useediter((state) => state.setkey);
   const setsourcevalue = useediter((state) => state.setSourceValue);
   const settargetvalue = useediter((state) => state.setTargetValue);
+  const setTags = useediter((state) => state.setTags);
   const isReplaceMode = useediter((state) => state.isReplaceMode);
-  // const indexInReplaceMode = useediter((state) => state.indexInReplaceMode);
   const setIndexInReplaceMode = useediter((state) => state.setIndexInReplaceMode);
 
   // フィルターと検索クエリに基づいて表示するアイテムを決定
   const filteredItems = useMemo(() => {
     if (!translateData || !translateData.list) return [];
 
-    console.log("フィルター実行", { 
-      activeFilter, 
-      searchQuery, 
-      replaceQuery,
-      isReplaceMode,
-      totalItems: translateData.list.length 
-    });
-
     let filteredList = translateData.list;
+
+    // タグフィルターを適用
+    if (tagFilter.length > 0) {
+      filteredList = filteredList.filter(item =>
+        tagFilter.every(tag => item.tags.includes(tag))
+      );
+    }
 
     // 置き換えモード中は置き換え対象のアイテムのみを表示
     if (isReplaceMode && replaceItems.length > 0) {
@@ -123,15 +130,16 @@ export default function TranslationList() {
     }
 
     return filteredList;
-  }, [translateData, searchQuery, replaceQuery, activeFilter, isReplaceMode, replaceItems]);
+  }, [translateData, searchQuery, replaceQuery, activeFilter, isReplaceMode, replaceItems, tagFilter]);
 
   // リストアイテム選択時の処理
   const handleItemSelect = useCallback(
-    (key: string, sourceValue: string, targetValue: string) => {
+    (key: string, sourceValue: string, targetValue: string, tags: string[]) => {
       // アイテムの値は常に更新
       setkey(key);
       setsourcevalue(sourceValue);
       settargetvalue(targetValue);
+      setTags(tags);
       
       // 置き換えモード中の場合、選択したアイテムに対応するインデックスを更新
       if (isReplaceMode && replaceItems.length > 0) {
@@ -144,7 +152,7 @@ export default function TranslationList() {
         }
       }
     },
-    [setkey, setsourcevalue, settargetvalue, isReplaceMode, replaceItems, setIndexInReplaceMode],
+    [setkey, setsourcevalue, settargetvalue, setTags, isReplaceMode, replaceItems, setIndexInReplaceMode],
   );
   
   // 置き換えモード中のアイテムに戻る
@@ -154,6 +162,7 @@ export default function TranslationList() {
       setkey(currentItem.key);
       setsourcevalue(currentItem.sourceValue);
       settargetvalue(currentItem.targetValue);
+      setTags(currentItem.tags);
       
       // スクロール位置も更新
       const itemIndex = filteredItems.findIndex(item => item.key === currentItem.key);
@@ -161,7 +170,7 @@ export default function TranslationList() {
         listRef.current.scrollToItem(itemIndex);
       }
     }
-  }, [isReplaceMode, replaceItems, currentReplaceIndex, filteredItems, setkey, setsourcevalue, settargetvalue]);
+  }, [isReplaceMode, replaceItems, currentReplaceIndex, filteredItems, setkey, setsourcevalue, settargetvalue, setTags]);
 
   // リストのスクロール位置をリセット
   useEffect(() => {
@@ -217,6 +226,7 @@ export default function TranslationList() {
       item.sourceValue,
       item.targetValue,
     );
+    const isItemDeleted = item.tags.includes('deleted');
 
     // 置き換え処理中のアイテムかどうかを判定
     const isReplaceTargetItem = isReplaceMode && replaceItems.some(
@@ -233,20 +243,22 @@ export default function TranslationList() {
       <div
         style={style}
         className={`flex flex-col p-3 border-b border-base-300 transition-colors cursor-pointer ${
-          isCurrentReplaceItem 
-            ? 'bg-base-300' 
-            : isReplaceTargetItem 
-              ? 'bg-base-200'
-              : 'hover:bg-base-200'
+          isCurrentReplaceItem
+            ? 'bg-accent/20 border-accent'
+            : isReplaceTargetItem
+              ? 'bg-info/10 border-info/30'
+              : isItemDeleted
+                ? 'bg-error/5 border-error/20 opacity-60'
+                : 'hover:bg-base-200'
         }`}
         onClick={() =>
-          handleItemSelect(item.key, item.sourceValue, item.targetValue)
+          handleItemSelect(item.key, item.sourceValue, item.targetValue, item.tags)
         }
       >
         <>
           {/* キー */}
           <div className="text-sm font-medium text-primary mb-1 truncate flex items-center justify-between">
-            <span>
+            <span className={isItemDeleted ? 'line-through opacity-70' : ''}>
               {searchQuery
                 ? highlightText(truncateText(item.key, 50), searchQuery)
                 : truncateText(item.key, 50)}
@@ -262,27 +274,21 @@ export default function TranslationList() {
           </div>
 
           {/* 翻訳元の値 */}
-          <div className="text-sm mb-1 pl-2 truncate">
+          <div className={`text-sm mb-1 pl-2 truncate ${isItemDeleted ? 'line-through opacity-70' : ''}`}>
             <span className="text-xs text-secondary mr-1">元:</span>
-            {searchQuery
-              ? highlightText(
-                  <ColorCodeText text={truncateText(item.sourceValue, 40)} className="inline" />,
-                  searchQuery
-                )
-              : (
-                <ColorCodeText text={truncateText(item.sourceValue, 40)} className="inline" />
-              )}
+            {searchQuery ? (
+              highlightText(truncateText(item.sourceValue, 40), searchQuery)
+            ) : (
+              <ColorCodeText text={truncateText(item.sourceValue, 40)} className="inline" />
+            )}
           </div>
 
           {/* 翻訳対象の値 */}
-          <div className="text-sm pl-2 truncate">
+          <div className={`text-sm pl-2 truncate ${isItemDeleted ? 'line-through opacity-70' : ''}`}>
             <span className="text-xs text-accent mr-1">訳:</span>
             {!isItemUntranslated ? (
               searchQuery ? (
-                highlightText(
-                  <ColorCodeText text={truncateText(item.targetValue, 40)} className="inline" />,
-                  searchQuery
-                )
+                highlightText(truncateText(item.targetValue, 40), searchQuery)
               ) : (
                 <ColorCodeText text={truncateText(item.targetValue, 40)} className="inline" />
               )
@@ -294,6 +300,14 @@ export default function TranslationList() {
                   : "未翻訳"}
               </span>
             )}
+          </div>
+          {/* タグ */}
+          <div className="flex flex-wrap gap-1 mt-2">
+            {item.tags.map((tag, index) => (
+              <div key={index} className="badge badge-outline badge-sm">
+                {tag}
+              </div>
+            ))}
           </div>
         </>
       </div>
@@ -309,12 +323,12 @@ export default function TranslationList() {
         
         {/* 置き換えモード中の操作バー */}
         {isReplaceMode && replaceItems.length > 0 && (
-          <div className="alert shadow-sm bg-accent/10 text-accent-content p-2 mb-2 rounded-md">
-            <div className="text-sm text-base-content">
+          <div className="alert bg-info/10 border-info/30 text-info-content p-2 mb-2 rounded-md">
+            <div className="text-sm text-info-content">
               置き換え処理中: {currentReplaceIndex + 1} / {replaceItems.length}
             </div>
-            <button 
-              className="btn btn-sm btn-accent"
+            <button
+              className="btn btn-sm btn-info"
               onClick={returnToReplaceItem}
             >
               置き換え処理に戻る
@@ -324,7 +338,7 @@ export default function TranslationList() {
         
         {/* 検索結果カウント */}
         {searchQuery && (
-          <div className="text-xs text-right pr-3 text-info-content">
+          <div className="text-xs text-right pr-3 text-base-content/70">
             検索結果: {filteredItems.length}件
           </div>
         )}
@@ -342,11 +356,11 @@ export default function TranslationList() {
               <path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z" />
             </svg>
           </div>
-          <ul tabIndex={0} className="dropdown-content z-[1] menu shadow bg-base-100 rounded-box w-52">
+          <ul tabIndex={0} className="dropdown-content z-[1] menu shadow bg-base-100 rounded-box w-80 max-h-96 overflow-y-auto">
             <li>
               <a onClick={() => setActiveFilter("all")}>
                 全て
-                <span className="badge badge-sm badge-neutral ml-1">
+                <span className="badge badge-sm badge-base-300 ml-1">
                   {totalCount}
                 </span>
               </a>
@@ -367,8 +381,106 @@ export default function TranslationList() {
                 </span>
               </a>
             </li>
+            <li className="menu-title">
+              <span>タグでフィルター</span>
+            </li>
+            {allTags.map(tag => (
+              <li key={tag}>
+                <a
+                  className={`justify-between ${tagFilter.includes(tag) ? 'active bg-primary text-primary-content' : ''}`}
+                  onClick={() => {
+                    const newFilter = tagFilter.includes(tag)
+                      ? tagFilter.filter(t => t !== tag)
+                      : [...tagFilter, tag];
+                    setTagFilter(newFilter);
+                  }}
+                >
+                  #{tag}
+                  {tagFilter.includes(tag) && (
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </a>
+              </li>
+            ))}
+            {tagFilter.length > 0 && (
+              <li>
+                <a
+                  className="text-error"
+                  onClick={() => setTagFilter([])}
+                >
+                  すべてのタグフィルターをクリア
+                </a>
+              </li>
+            )}
+            <li className="menu-title">
+              <span>タグ管理</span>
+            </li>
+            <li>
+              <a
+                onClick={() => setShowAddTagModal(true)}
+                className="text-accent"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                新しいタグを追加
+              </a>
+            </li>
           </ul>
         </div>
+
+        {/* タグ追加モーダル */}
+        {showAddTagModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-base-100 p-6 rounded-lg shadow-xl w-96">
+              <h3 className="text-lg font-bold mb-4">新しいタグを追加</h3>
+              <input
+                type="text"
+                placeholder="タグ名を入力..."
+                className="input input-bordered w-full mb-4"
+                value={newTagName}
+                onChange={(e) => setNewTagName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newTagName.trim()) {
+                    const tagName = newTagName.trim();
+                    if (!allTags.includes(tagName)) {
+                      setAllTags([...allTags, tagName]);
+                    }
+                    setNewTagName('');
+                    setShowAddTagModal(false);
+                  }
+                  if (e.key === 'Escape') {
+                    setShowAddTagModal(false);
+                  }
+                }}
+                autoFocus
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  className="btn btn-ghost"
+                  onClick={() => setShowAddTagModal(false)}
+                >
+                  キャンセル
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => {
+                    if (newTagName.trim() && !allTags.includes(newTagName.trim())) {
+                      setAllTags([...allTags, newTagName.trim()]);
+                    }
+                    setNewTagName('');
+                    setShowAddTagModal(false);
+                  }}
+                  disabled={!newTagName.trim() || allTags.includes(newTagName.trim())}
+                >
+                  追加
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* リスト */}
         <div
@@ -384,7 +496,7 @@ export default function TranslationList() {
                     height={height}
                     width={width}
                     itemCount={filteredItems.length}
-                    itemSize={90}
+                    itemSize={110} // タグ表示のため高さを調整
                     overscanCount={5}
                   >
                     {Row}

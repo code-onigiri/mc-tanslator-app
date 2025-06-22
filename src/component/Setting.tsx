@@ -1,39 +1,127 @@
 import { useState, useRef, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
+import GeminiSettings from "./GeminiSettings";
+import ColorCodeText from "./ColorCodeText";
+import {
+  useSettingsStore,
+  AVAILABLE_THEMES,
+  COLOR_CODE_DISPLAY_OPTIONS,
+  LAYOUT_DIRECTION_OPTIONS
+} from "./stores/SettingsStore";
+
+// 設定項目の型定義
+interface SettingItem {
+  id: string;
+  name: string;
+  icon: React.ReactNode;
+  description?: string;
+  category: 'ai' | 'general' | 'advanced';
+}
+
+// 設定項目の定義
+const settingItems: SettingItem[] = [
+  {
+    id: 'gemini',
+    name: 'Gemini AI',
+    description: 'API設定とプロンプト管理',
+    category: 'ai',
+    icon: (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="20"
+        height="20"
+        fill="currentColor"
+        viewBox="0 0 16 16"
+      >
+        <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+        <path d="M8.5 6.5a.5.5 0 0 0-1 0v1.5H6a.5.5 0 0 0 0 1h1.5v1.5a.5.5 0 0 0 1 0V9H10a.5.5 0 0 0 0-1H8.5V6.5z"/>
+      </svg>
+    )
+  },
+  {
+    id: 'appearance',
+    name: '外観',
+    description: 'テーマとUI設定',
+    category: 'general',
+    icon: (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="20"
+        height="20"
+        fill="currentColor"
+        viewBox="0 0 16 16"
+      >
+        <path d="M8 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm0 1a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0zm0 13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 13zm8-5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2a.5.5 0 0 1 .5.5zM3 8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2A.5.5 0 0 1 3 8z"/>
+      </svg>
+    )
+  },
+  {
+    id: 'editor',
+    name: 'エディター',
+    description: 'エディター設定とカスタマイズ',
+    category: 'general',
+    icon: (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="20"
+        height="20"
+        fill="currentColor"
+        viewBox="0 0 16 16"
+      >
+        <path d="M1 0 0 1l2.2 3.081a1 1 0 0 0 .815.419h.07a1 1 0 0 1 .708.293L2.5 6.5l.94.94a1 1 0 0 1 .293.708v.07a1 1 0 0 0 .419.815L7.233 10.2a.5.5 0 0 1 .094.319v4.733A.5.5 0 0 1 6.826 16H4.174a.5.5 0 0 1-.5-.5v-4.733a.5.5 0 0 1 .094-.319L6.846 7.367a1 1 0 0 0 .419-.815v-.07a1 1 0 0 1 .293-.708L8.5 4.5l-.94-.94a1 1 0 0 1-.293-.708v-.07a1 1 0 0 0-.419-.815L4.767.886A.5.5 0 0 1 4.673.567V.5a.5.5 0 0 1 .5-.5zM14 1 13 0l-2.2 3.081a1 1 0 0 1-.815.419h-.07a1 1 0 0 0-.708.293L8.5 4.5l.94.94a1 1 0 0 0 .293.708v.07a1 1 0 0 1 .419.815L13.233 10.2a.5.5 0 0 0 .094.319v4.733a.5.5 0 0 0 .5.5h2.652a.5.5 0 0 0 .5-.5v-4.733a.5.5 0 0 0 .094-.319L13.154 7.367a1 1 0 0 1 .419-.815v-.07a1 1 0 0 0 .293-.708L14.5 4.5l-.94-.94a1 1 0 0 0-.293-.708v-.07a1 1 0 0 1-.419-.815L11.767.886A.5.5 0 0 0 11.673.567V.5a.5.5 0 0 0-.5-.5z"/>
+      </svg>
+    )
+  },
+  {
+    id: 'language',
+    name: '言語設定',
+    description: '表示言語とローカライゼーション',
+    category: 'general',
+    icon: (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="20"
+        height="20"
+        fill="currentColor"
+        viewBox="0 0 16 16"
+      >
+        <path d="M4.545 6.714 4.11 8H3l1.862-5h1.284L8 8H6.833l-.435-1.286H4.545zm1.634-.736L5.5 3.956h-.049l-.679 2.022H6.18z"/>
+        <path d="M0 2a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v3h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-3H2a2 2 0 0 1-2-2V2zm2-1a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H2zm7.138 9.995c.193.301.402.583.63.846-.748.575-1.673 1.001-2.768 1.292.178.217.451.635.555.867 1.125-.359 2.08-.844 2.886-1.494.777.665 1.739 1.165 2.93 1.472.133-.254.414-.673.629-.89-1.125-.253-2.057-.694-2.82-1.284.681-.747 1.222-1.651 1.621-2.757H14V8h-3v1.047h.765c-.318.844-.74 1.546-1.272 2.13a6.066 6.066 0 0 1-.415-.492 1.988 1.988 0 0 1-.94.31z"/>
+      </svg>
+    )
+  },
+  {
+    id: 'advanced',
+    name: '高度な設定',
+    description: 'デバッグとパフォーマンス',
+    category: 'advanced',
+    icon: (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="20"
+        height="20"
+        fill="currentColor"
+        viewBox="0 0 16 16"
+      >
+        <path fillRule="evenodd" d="M11.5 2a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM9.05 3a2.5 2.5 0 0 1 4.9 0H16v1h-2.05a2.5 2.5 0 0 1-4.9 0H0V3h9.05zM4.5 7a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM2.05 8a2.5 2.5 0 0 1 4.9 0H16v1H6.95a2.5 2.5 0 0 1-4.9 0H0V8h2.05zm9.45 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm-2.45 1a2.5 2.5 0 0 1 4.9 0H16v1h-2.05a2.5 2.5 0 0 1-4.9 0H0v-1h9.05z"/>
+      </svg>
+    )
+  }
+];
 
 export default function SettingsMenu() {
   const [isOpen, setIsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>('gemini');
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // 現在のテーマ状態
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    // ローカルストレージからテーマを取得するか、デフォルトでシステム設定に合わせる
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme) {
-      return savedTheme === "dark";
-    }
-
-    // システムの設定を確認
-    return window.matchMedia("(prefers-color-scheme: dark)").matches;
-  });
-
-  // コンポーネントのマウント時にテーマを適用
-  useEffect(() => {
-    applyTheme(isDarkMode ? "dark" : "light");
-  }, []);
-
-  // テーマを切り替える関数
-  const toggleTheme = () => {
-    const newTheme = isDarkMode ? "light" : "dark";
-    setIsDarkMode(!isDarkMode);
-    applyTheme(newTheme);
-  };
-
-  // テーマを適用する関数
-  const applyTheme = (theme: string) => {
-    document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("theme", theme);
-  };
+  // 設定ストアから状態と関数を取得
+  const currentTheme = useSettingsStore((state) => state.currentTheme);
+  const setCurrentTheme = useSettingsStore((state) => state.setCurrentTheme);
+  const layoutDirection = useSettingsStore((state) => state.layoutDirection);
+  const setLayoutDirection = useSettingsStore((state) => state.setLayoutDirection);
+  const colorCodeDisplayMode = useSettingsStore((state) => state.colorCodeDisplayMode);
+  const setColorCodeDisplayMode = useSettingsStore((state) => state.setColorCodeDisplayMode);
+  const resetSettings = useSettingsStore((state) => state.resetSettings);
 
   // メニュー外クリックで閉じる
   useEffect(() => {
@@ -58,14 +146,365 @@ export default function SettingsMenu() {
     setIsOpen(!isOpen);
   };
 
+  // 外観設定コンポーネント
+  const AppearanceSettings = () => (
+    <div className="space-y-8">
+      {/* テーマ設定 */}
+      <div>
+        <h3 className="text-lg font-semibold mb-4">テーマ設定</h3>
+        <div className="bg-base-200 rounded-lg p-4">
+          <div className="mb-4">
+            <label className="text-sm font-medium text-base-content/70">
+              現在のテーマ: {AVAILABLE_THEMES.find(t => t.value === currentTheme)?.label}
+            </label>
+          </div>
+          
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {AVAILABLE_THEMES.map((theme) => (
+              <button
+                key={theme.value}
+                onClick={() => setCurrentTheme(theme.value)}
+                className={`p-3 rounded-lg border-2 transition-all text-left ${
+                  currentTheme === theme.value
+                    ? 'border-primary bg-primary/10'
+                    : 'border-base-300 hover:border-primary/50'
+                }`}
+                title={theme.description}
+              >
+                <div className="font-medium text-sm">{theme.label}</div>
+                <div className="text-xs text-base-content/70 mt-1">
+                  {theme.description}
+                </div>
+                {currentTheme === theme.value && (
+                  <div className="text-xs text-primary mt-1 flex items-center">
+                    <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    使用中
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* レイアウト設定 */}
+      <div>
+        <h3 className="text-lg font-semibold mb-4">レイアウト設定</h3>
+        <div className="bg-base-200 rounded-lg p-4">
+          <div className="space-y-3">
+            {LAYOUT_DIRECTION_OPTIONS.map((option) => (
+              <div
+                key={option.value}
+                className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                  layoutDirection === option.value
+                    ? 'border-primary bg-primary/10'
+                    : 'border-base-300 hover:border-primary/50'
+                }`}
+                onClick={() => setLayoutDirection(option.value)}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-medium">{option.label}</div>
+                    <div className="text-sm text-base-content/70">{option.description}</div>
+                  </div>
+                  <input
+                    type="radio"
+                    className="radio radio-primary"
+                    checked={layoutDirection === option.value}
+                    onChange={() => setLayoutDirection(option.value)}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* カラーコード表示設定 */}
+      <div>
+        <h3 className="text-lg font-semibold mb-4">カラーコード表示設定</h3>
+        <div className="bg-base-200 rounded-lg p-4">
+          <div className="space-y-3">
+            {COLOR_CODE_DISPLAY_OPTIONS.map((option) => (
+              <div
+                key={option.value}
+                className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                  colorCodeDisplayMode === option.value
+                    ? 'border-primary bg-primary/10'
+                    : 'border-base-300 hover:border-primary/50'
+                }`}
+                onClick={() => setColorCodeDisplayMode(option.value)}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-medium">{option.label}</div>
+                    <div className="text-sm text-base-content/70">{option.description}</div>
+                  </div>
+                  <input
+                    type="radio"
+                    className="radio radio-primary"
+                    checked={colorCodeDisplayMode === option.value}
+                    onChange={() => setColorCodeDisplayMode(option.value)}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* カラーコードプレビュー */}
+          <div className="mt-4 p-3 bg-base-100 rounded-lg">
+            <div className="text-sm font-medium mb-2">プレビュー:</div>
+            <div className="font-mono">
+              <ColorCodeText
+                text="§c赤色テキスト§l太字§r通常テキスト"
+                forceDisplayMode={colorCodeDisplayMode}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 設定リセット */}
+      <div>
+        <h3 className="text-lg font-semibold mb-4">設定リセット</h3>
+        <div className="bg-base-200 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="font-medium">全ての設定をリセット</div>
+              <div className="text-sm text-base-content/70">
+                すべての設定をデフォルト値に戻します
+              </div>
+            </div>
+            <button
+              onClick={resetSettings}
+              className="btn btn-outline btn-warning"
+            >
+              リセット
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // その他の設定コンポーネント
+  const OtherSettings = ({ id }: { id: string }) => {
+    const item = settingItems.find(item => item.id === id);
+    
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-12">
+          <div className="text-6xl mb-4">🚧</div>
+          <h3 className="text-xl font-semibold mb-2">{item?.name}</h3>
+          <p className="text-base-content/70 mb-4">
+            この設定画面は開発中です
+          </p>
+          <div className="bg-base-200 p-4 rounded-lg text-sm">
+            <p className="font-medium mb-2">予定されている機能:</p>
+            <ul className="list-disc list-inside space-y-1 text-left">
+              {id === 'editor' && (
+                <>
+                  <li>フォントサイズ調整</li>
+                  <li>行番号表示設定</li>
+                  <li>自動保存設定</li>
+                  <li>ショートカットキー設定</li>
+                </>
+              )}
+              {id === 'language' && (
+                <>
+                  <li>表示言語切り替え</li>
+                  <li>日時フォーマット設定</li>
+                  <li>数値フォーマット設定</li>
+                  <li>地域設定</li>
+                </>
+              )}
+              {id === 'advanced' && (
+                <>
+                  <li>デバッグモード</li>
+                  <li>パフォーマンス監視</li>
+                  <li>ログレベル設定</li>
+                  <li>実験的機能</li>
+                </>
+              )}
+            </ul>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // 設定内容を表示
+  const renderSettingsContent = () => {
+    switch (activeTab) {
+      case 'gemini':
+        return <GeminiSettings />;
+      case 'appearance':
+        return <AppearanceSettings />;
+      default:
+        return <OtherSettings id={activeTab} />;
+    }
+  };
+
+  // カテゴリー別にグループ化
+  const groupedItems = {
+    ai: settingItems.filter(item => item.category === 'ai'),
+    general: settingItems.filter(item => item.category === 'general'),
+    advanced: settingItems.filter(item => item.category === 'advanced')
+  };
+
+  // フルスクリーン設定画面が開いている場合
+  if (isOpen) {
+    return (
+      <div className="fixed inset-0 bg-base-100 z-50 flex">
+        {/* 左側のナビゲーション */}
+        <div className="w-80 bg-base-200 border-r border-base-300 flex flex-col">
+          {/* ヘッダー */}
+          <div className="flex items-center justify-between p-4 border-b border-base-300">
+            <h1 className="text-xl font-bold">設定</h1>
+            <button
+              onClick={() => setIsOpen(false)}
+              className="btn btn-ghost btn-sm"
+            >
+              ✕
+            </button>
+          </div>
+          
+          {/* ナビゲーションリスト */}
+          <div className="flex-1 overflow-y-auto p-4">
+            <div className="space-y-6">
+              {/* AI設定 */}
+              <div>
+                <h3 className="text-sm font-semibold text-base-content/70 uppercase tracking-wider mb-3">
+                  AI機能
+                </h3>
+                <div className="space-y-1">
+                  {groupedItems.ai.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => setActiveTab(item.id)}
+                      className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors text-left ${
+                        activeTab === item.id
+                          ? 'bg-primary text-primary-content shadow-md'
+                          : 'hover:bg-base-300'
+                      }`}
+                    >
+                      <div className={`flex-shrink-0 ${activeTab === item.id ? 'text-primary-content' : 'text-primary'}`}>
+                        {item.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">{item.name}</div>
+                        {item.description && (
+                          <div className={`text-xs truncate ${
+                            activeTab === item.id ? 'text-primary-content/70' : 'text-base-content/70'
+                          }`}>
+                            {item.description}
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 一般設定 */}
+              <div>
+                <h3 className="text-sm font-semibold text-base-content/70 uppercase tracking-wider mb-3">
+                  一般
+                </h3>
+                <div className="space-y-1">
+                  {groupedItems.general.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => setActiveTab(item.id)}
+                      className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors text-left ${
+                        activeTab === item.id
+                          ? 'bg-primary text-primary-content shadow-md'
+                          : 'hover:bg-base-300'
+                      }`}
+                    >
+                      <div className={`flex-shrink-0 ${activeTab === item.id ? 'text-primary-content' : 'text-base-content/70'}`}>
+                        {item.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">{item.name}</div>
+                        {item.description && (
+                          <div className={`text-xs truncate ${
+                            activeTab === item.id ? 'text-primary-content/70' : 'text-base-content/70'
+                          }`}>
+                            {item.description}
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 高度な設定 */}
+              <div>
+                <h3 className="text-sm font-semibold text-base-content/70 uppercase tracking-wider mb-3">
+                  高度な設定
+                </h3>
+                <div className="space-y-1">
+                  {groupedItems.advanced.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => setActiveTab(item.id)}
+                      className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors text-left ${
+                        activeTab === item.id
+                          ? 'bg-primary text-primary-content shadow-md'
+                          : 'hover:bg-base-300'
+                      }`}
+                    >
+                      <div className={`flex-shrink-0 ${activeTab === item.id ? 'text-primary-content' : 'text-base-content/70'}`}>
+                        {item.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">{item.name}</div>
+                        {item.description && (
+                          <div className={`text-xs truncate ${
+                            activeTab === item.id ? 'text-primary-content/70' : 'text-base-content/70'
+                          }`}>
+                            {item.description}
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* 右側のコンテンツエリア */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-6 max-w-4xl">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+            >
+              {renderSettingsContent()}
+            </motion.div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 通常の設定ボタン
   return (
     <div ref={menuRef} className="relative">
       <button
         onClick={toggleMenu}
         className="mx-2 p-2 hover:bg-base-300 rounded-lg transition-colors cursor-pointer flex items-center justify-center w-8 h-8"
         aria-expanded={isOpen}
-        aria-controls="settings-dropdown"
-        aria-label={isOpen ? "設定メニューを閉じる" : "設定メニューを開く"}
+        aria-label="設定を開く"
       >
         <motion.svg
           xmlns="http://www.w3.org/2000/svg"
@@ -83,125 +522,6 @@ export default function SettingsMenu() {
           <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z" />
         </motion.svg>
       </button>
-
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            id="settings-dropdown"
-            className="absolute top-full right-0 mt-2 p-4 rounded-lg shadow-lg bg-base-200 text-base-content w-56 z-50"
-            initial={{ opacity: 0, y: -10 }}
-            animate={{
-              opacity: 1,
-              y: 0,
-              transition: {
-                type: "spring",
-                stiffness: 300,
-                damping: 25,
-              },
-            }}
-            exit={{
-              opacity: 0,
-              y: -10,
-              transition: {
-                duration: 0.15,
-              },
-            }}
-            style={{
-              transformOrigin: "top right",
-            }}
-          >
-            <div className="space-y-3">
-              {/* テーマ切り替え */}
-              <div className="flex items-center justify-between py-1">
-                <div className="flex items-center gap-2">
-                  {isDarkMode ? (
-                    // Moon icon (Bootstrap Icons)
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      fill="currentColor"
-                      className="bi bi-moon w-4 h-4"
-                      viewBox="0 0 16 16"
-                    >
-                      <path d="M6 .278a.768.768 0 0 1 .08.858 7.208 7.208 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 0 1 .81.316.733.733 0 0 1-.031.893A8.349 8.349 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 0 1 6 .278zM4.858 1.311A7.269 7.269 0 0 0 1.025 7.71c0 4.02 3.279 7.276 7.319 7.276a7.316 7.316 0 0 0 5.205-2.162c-.337.042-.68.063-1.029.063-4.61 0-8.343-3.714-8.343-8.29 0-1.167.242-2.278.681-3.286z" />
-                    </svg>
-                  ) : (
-                    // Sun icon (Bootstrap Icons)
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      fill="currentColor"
-                      className="bi bi-sun w-4 h-4"
-                      viewBox="0 0 16 16"
-                    >
-                      <path d="M8 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm0 1a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0zm0 13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 13zm8-5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2a.5.5 0 0 1 .5.5zM3 8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2A.5.5 0 0 1 3 8zm10.657-5.657a.5.5 0 0 1 0 .707l-1.414 1.415a.5.5 0 1 1-.707-.708l1.414-1.414a.5.5 0 0 1 .707 0zm-9.193 9.193a.5.5 0 0 1 0 .707L3.05 13.657a.5.5 0 0 1-.707-.707l1.414-1.414a.5.5 0 0 1 .707 0zm9.193 2.121a.5.5 0 0 1-.707 0l-1.414-1.414a.5.5 0 0 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .707zM4.464 4.465a.5.5 0 0 1-.707 0L2.343 3.05a.5.5 0 1 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .708z" />
-                    </svg>
-                  )}
-                  <span>ダークモード</span>
-                </div>
-                <label className="swap swap-rotate">
-                  {/* チェックボックス */}
-                  <input
-                    type="checkbox"
-                    checked={isDarkMode}
-                    onChange={toggleTheme}
-                    className="hidden"
-                  />
-
-                  {/* トグルスイッチ */}
-                  <div className="relative w-10 h-5 bg-base-300 rounded-full">
-                    <div
-                      className={`absolute w-4 h-4 rounded-full top-0.5 transition-all duration-300 ${
-                        isDarkMode
-                          ? "bg-primary left-5"
-                          : "bg-base-content left-0.5"
-                      }`}
-                    ></div>
-                  </div>
-                </label>
-              </div>
-
-              <div className="h-px bg-base-300 w-full my-1"></div>
-
-              {/* その他のメニュー項目 */}
-              <div className="menu-item p-2 hover:bg-base-300 rounded-md transition-colors flex items-center gap-2">
-                {/* Bootstrap Icons - 一般設定アイコン */}
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  fill="currentColor"
-                  className="bi bi-sliders w-4 h-4"
-                  viewBox="0 0 16 16"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M11.5 2a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM9.05 3a2.5 2.5 0 0 1 4.9 0H16v1h-2.05a2.5 2.5 0 0 1-4.9 0H0V3h9.05zM4.5 7a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM2.05 8a2.5 2.5 0 0 1 4.9 0H16v1H6.95a2.5 2.5 0 0 1-4.9 0H0V8h2.05zm9.45 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm-2.45 1a2.5 2.5 0 0 1 4.9 0H16v1h-2.05a2.5 2.5 0 0 1-4.9 0H0v-1h9.05z"
-                  />
-                </svg>
-                一般設定
-              </div>
-              <div className="menu-item p-2 hover:bg-base-300 rounded-md transition-colors flex items-center gap-2">
-                {/* Bootstrap Icons - ヘルプアイコン */}
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  fill="currentColor"
-                  className="bi bi-question-circle w-4 h-4"
-                  viewBox="0 0 16 16"
-                >
-                  <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z" />
-                  <path d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286zm1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94z" />
-                </svg>
-                ヘルプ
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

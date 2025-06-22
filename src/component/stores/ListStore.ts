@@ -7,6 +7,7 @@ export interface item {
   key: string;
   sourceValue: string;
   targetValue: string;
+  tags: string[];
 }
 
 interface listData {
@@ -17,6 +18,10 @@ interface listData {
 interface ListStoreState {
   translate: listData | null;
   setTranslate: (data: listData | null) => void;
+  allTags: string[];
+  setAllTags: (tags: string[]) => void;
+  tagFilter: string[];
+  setTagFilter: (tags: string[]) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   replaceQuery: string;
@@ -36,6 +41,10 @@ export const useListStore = create<ListStoreState>((set) => ({
   //翻訳データ
   translate: null,
   setTranslate: (data: listData | null) => set({ translate: data }),
+  allTags: [],
+  setAllTags: (tags: string[]) => set({ allTags: tags }),
+  tagFilter: [],
+  setTagFilter: (tags: string[]) => set({ tagFilter: tags }),
   //検索
   searchQuery: "",
   setSearchQuery: (query: string) => set({ searchQuery: query }),
@@ -61,9 +70,11 @@ export function useSyncTranslateData() {
   // fileTranslateDataからデータを取得
   const fileSource = fileTranslateData((state) => state.translateSource);
   const fileTarget = fileTranslateData((state) => state.translateTarget);
+  const itemTags = fileTranslateData((state) => state.itemTags);
 
   // ListStoreからセッター関数を取得
   const setTranslate = useListStore((state) => state.setTranslate);
+  const setAllTags = useListStore((state) => state.setAllTags);
 
   useEffect(() => {
     if (fileSource !== null && fileTarget !== null) {
@@ -71,21 +82,26 @@ export function useSyncTranslateData() {
       const translatedList: item[] = [];
 
       // sourceのすべてのキーに対して処理
+      const allTags = new Set<string>();
       Object.keys(fileSource).forEach((key) => {
         const sourceValue = fileSource[key];
         // targetに対応するキーがあるかチェック
         const targetValue = fileTarget[key] || "";
+        const tags = itemTags?.[key] || [];
+        tags.forEach(tag => allTags.add(tag));
 
         // リストアイテムを追加
         translatedList.push({
           key,
           sourceValue,
           targetValue,
+          tags,
         });
       });
 
-      // 生成したリストをセット
+      // 生成したリストとタグをセット
       setTranslate({ list: translatedList });
+      setAllTags(Array.from(allTags));
     }
-  }, [fileSource, fileTarget, setTranslate]);
+  }, [fileSource, fileTarget, itemTags, setTranslate, setAllTags]);
 }

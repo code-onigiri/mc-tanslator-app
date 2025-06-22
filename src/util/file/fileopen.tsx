@@ -1,7 +1,12 @@
 // ファイルを開くためのコンポーネント
 // 翻訳元または翻訳対象のデータを読み込むUIを提供
+import React, { useState } from "react";
 import { translateData } from "./fileop";
 import type { JsonData, FileComments } from "./fileop";
+import { previewUpdate, updateSourceData, UpdateOptions } from "./fileUpdate";
+import { UpdateDiff, isEmptyDiff } from "./updateDiff";
+import UpdateDialog from "../../component/UpdateDialog";
+import toast from "react-hot-toast";
 
 // 翻訳対象ファイルを開くコンポーネント
 export function TargetFileOpen() {
@@ -56,19 +61,99 @@ function handleTargetFileChange(event: React.ChangeEvent<HTMLInputElement>) {
 
 // 翻訳元ファイルを開くコンポーネント
 export function SourceFileOpen() {
+  const [showUpdateDialog, setShowUpdateDialog] = useState(false);
+  const [updateDiff, setUpdateDiff] = useState<UpdateDiff>({
+    added: [],
+    deleted: [],
+    modified: [],
+    unchanged: []
+  });
+  const [newSourceData, setNewSourceData] = useState<JsonData | null>(null);
+  const [newSourceComments, setNewSourceComments] = useState<FileComments | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    handleSourceFileChange(
+      event,
+      setShowUpdateDialog,
+      setUpdateDiff,
+      setNewSourceData,
+      setNewSourceComments
+    );
+  };
+
+  const handleUpdateConfirm = async (options: UpdateOptions) => {
+    if (!newSourceData) return;
+
+    setIsUpdating(true);
+    try {
+      const result = updateSourceData(newSourceData, newSourceComments, options);
+      
+      if (result.success) {
+        toast.success(`翻訳元ファイルを更新しました: ${result.summary}`);
+        setShowUpdateDialog(false);
+        
+        // フォームをリセット
+        setNewSourceData(null);
+        setNewSourceComments(null);
+        setUpdateDiff({
+          added: [],
+          deleted: [],
+          modified: [],
+          unchanged: []
+        });
+      } else {
+        toast.error(`更新に失敗しました: ${result.error || "不明なエラー"}`);
+      }
+    } catch (error) {
+      console.error("更新処理中にエラーが発生しました:", error);
+      toast.error("更新処理中にエラーが発生しました");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleUpdateCancel = () => {
+    setShowUpdateDialog(false);
+    setNewSourceData(null);
+    setNewSourceComments(null);
+    setUpdateDiff({
+      added: [],
+      deleted: [],
+      modified: [],
+      unchanged: []
+    });
+  };
+
   return (
-    <input
-      type="file"
-      onChange={handleSourceFileChange}
-      accept=".json,.lang"
-      className="file-input"
-      placeholder="en_us.jsonなどを開く"
-    ></input>
+    <>
+      <input
+        type="file"
+        onChange={handleFileSelect}
+        accept=".json,.lang"
+        className="file-input"
+        placeholder="en_us.jsonなどを開く"
+      />
+      
+      <UpdateDialog
+        isOpen={showUpdateDialog}
+        onClose={handleUpdateCancel}
+        onConfirm={handleUpdateConfirm}
+        diff={updateDiff}
+        isLoading={isUpdating}
+      />
+    </>
   );
 }
 
 // 翻訳元ファイルの変更イベントを処理
-function handleSourceFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+function handleSourceFileChange(
+  event: React.ChangeEvent<HTMLInputElement>,
+  setShowUpdateDialog: (show: boolean) => void,
+  setUpdateDiff: (diff: UpdateDiff) => void,
+  setNewSourceData: (data: JsonData | null) => void,
+  setNewSourceComments: (comments: FileComments | null) => void
+) {
   const file = event.target.files?.[0];
 
   if (!file) return;
@@ -77,29 +162,61 @@ function handleSourceFileChange(event: React.ChangeEvent<HTMLInputElement>) {
 
   reader.onload = (e) => {
     try {
-      const extension = file.name.split(".").pop()?.toLowerCase(); // ファイル拡張子を取得
+      const extension = file.name.split(".").pop()?.toLowerCase();
+      let jsonData: JsonData;
+      let comments: FileComments | null = null;
 
       if (extension === "json") {
-        const jsonData = JSON.parse(e.target?.result as string) as JsonData; // JSONをパース
-        const { settranslateSource } = translateData.getState();
-        settranslateSource(jsonData); // Zustandストアを更新
-        console.log("JSONファイルが正常に読み込まれました");
+        jsonData = JSON.parse(e.target?.result as string) as JsonData;
       } else if (extension === "lang") {
-        const { data, comments } = parseLangFile(e.target?.result as string); // .langファイルをパース
-        const { settranslateSource, setSourceComments } = translateData.getState();
-        settranslateSource(data);
-        setSourceComments(comments);
-        console.log(".langファイルが正常に読み込まれました");
+        const parsed = parseLangFile(e.target?.result as string);
+        jsonData = parsed.data;
+        comments = parsed.comments;
       } else {
         throw new Error("サポートされていないファイル形式です");
       }
+
+      // 既存データがあるかチェック
+      const currentSourceData = translateData.getState().translateSource;
+      
+      if (currentSourceData) {
+        // 既存データがある場合は差分チェック
+        const diff = previewUpdate(jsonData);
+        
+        if (isEmptyDiff(diff)) {
+          // 差分がない場合は直接更新
+          const { settranslateSource, setSourceComments } = translateData.getState();
+          settranslateSource(jsonData);
+          if (comments) {
+            setSourceComments(comments);
+          }
+          toast.success("翻訳元ファイルを読み込みました（変更なし）");
+        } else {
+          // 差分がある場合は確認ダイアログを表示
+          setUpdateDiff(diff);
+          setNewSourceData(jsonData);
+          setNewSourceComments(comments);
+          setShowUpdateDialog(true);
+        }
+      } else {
+        // 初回読み込みの場合は直接設定
+        const { settranslateSource, setSourceComments } = translateData.getState();
+        settranslateSource(jsonData);
+        if (comments) {
+          setSourceComments(comments);
+        }
+        toast.success("翻訳元ファイルを読み込みました");
+      }
+      
     } catch (error) {
       console.error("ファイルの読み込み中にエラーが発生しました:", error);
+      toast.error("ファイルの読み込みに失敗しました");
     }
   };
 
   reader.onerror = (error) => {
     console.error("ファイルの読み込み中にエラーが発生しました:", error);
+    toast.error("ファイルの読み込みに失敗しました");
   };
 
   reader.readAsText(file);

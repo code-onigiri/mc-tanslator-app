@@ -1,0 +1,9 @@
+# 使用ライブラリ類
+- React
+- tailwindcss
+- daysiUI
+- Zustand
+- Vercel
+- heroicons
+- bun
+- vite

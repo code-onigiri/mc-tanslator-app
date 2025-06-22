@@ -14,10 +14,12 @@ interface translateDataType {
   translateTarget: JsonData | null; // 翻訳対象データ
   sourceComments: FileComments | null; // 翻訳元のコメント
   targetComments: FileComments | null; // 翻訳対象のコメント
+  itemTags: { [key: string]: string[] } | null; // アイテムごとのタグ
   settranslateSource: (data: JsonData) => void; // 翻訳元データを設定
   settranslateTarget: (data: JsonData) => void; // 翻訳対象データを設定
   setSourceComments: (comments: FileComments) => void; // 翻訳元コメントを設定
   setTargetComments: (comments: FileComments) => void; // 翻訳対象コメントを設定
+  setItemTags: (tags: { [key: string]: string[] }) => void; // タグを設定
 }
 
 const translateData = create<translateDataType>()((set) => ({
@@ -25,6 +27,7 @@ const translateData = create<translateDataType>()((set) => ({
   translateTarget: null,
   sourceComments: null,
   targetComments: null,
+  itemTags: null,
   gettranslateSource: () =>
     translateData.getState().translateSource
       ? null
@@ -41,6 +44,8 @@ const translateData = create<translateDataType>()((set) => ({
     set(() => ({ sourceComments: comments })),
   setTargetComments: (comments: FileComments) =>
     set(() => ({ targetComments: comments })),
+  setItemTags: (tags: { [key: string]: string[] }) =>
+    set(() => ({ itemTags: tags })),
 }));
 
 export { translateData };

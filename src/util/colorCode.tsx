@@ -161,8 +161,15 @@ function escapeHtml(text: string): string {
 
 /**
  * React用のカラーコードレンダリング関数（TailwindCSS + DaisyUI対応）
+ * @param text レンダリング対象のテキスト
+ * @param displayMode 表示モード ('show' | 'hide' | 'plain')
  */
-export function renderColorCodeToReact(text: string): React.ReactNode {
+export function renderColorCodeToReact(text: string, displayMode: 'show' | 'hide' | 'plain' = 'show'): React.ReactNode {
+  // プレーンモードの場合、カラーコードを解釈せずにそのまま表示
+  if (displayMode === 'plain') {
+    return <span>{text}</span>;
+  }
+
   const parsedContent = parseColorCodeText(text);
   const elements: React.ReactNode[] = [];
   let currentColor = '';
@@ -171,15 +178,19 @@ export function renderColorCodeToReact(text: string): React.ReactNode {
   
   for (const item of parsedContent) {
     if (item.type === 'color-code') {
-      // カラーコード自体をDaisyUIクラスで表示
-      elements.push(
-        <span
-          key={`code-${key++}`}
-          className="bg-base-300 text-base-content px-1 py-0.5 rounded text-xs font-mono"
-        >
-          {item.content}
-        </span>
-      );
+      // 表示モードに応じてカラーコード部分の表示を切り替え
+      if (displayMode === 'show') {
+        // カラーコード自体をDaisyUIクラスで表示
+        elements.push(
+          <span
+            key={`code-${key++}`}
+            className="bg-base-300 text-base-content px-1 py-0.5 rounded text-xs font-mono"
+          >
+            {item.content}
+          </span>
+        );
+      }
+      // hideモードの場合はカラーコード部分を表示しない
       
       if (item.isReset) {
         // リセット
