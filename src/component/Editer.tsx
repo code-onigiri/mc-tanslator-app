@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useediter } from "./stores/EditerStore";
+import { useEditorSettingsStore } from "./stores/EditorSettingsStore";
 import { translateData } from "../util/file/fileop";
 import Glossary from "./Glossary";
 import AITranslator from "./AITranslator";
@@ -34,13 +35,23 @@ const highlightText = (text: string, query: string): React.ReactNode => {
 };
 
 export default function Editer() {
-  // タブの状態管理
+  // エディター設定ストアから状態を取得
+  const fontSize = useEditorSettingsStore((state) => state.fontSize);
+  const sidebarVisible = useEditorSettingsStore((state) => state.sidebarVisible);
+  const sidebarWidth = useEditorSettingsStore((state) => state.sidebarWidth);
+  const defaultSidebarTab = useEditorSettingsStore((state) => state.defaultSidebarTab);
+// const showLineNumbers = useEditorSettingsStore((state) => state.showLineNumbers);
+  const colorCodeToolbarDefaultVisible = useEditorSettingsStore((state) => state.colorCodeToolbarDefaultVisible);
+  const tagEditAreaVisible = useEditorSettingsStore((state) => state.tagEditAreaVisible);
+  const initializeEditorSettings = useEditorSettingsStore((state) => state.initializeEditorSettings);
+
+  // タブの状態管理（デフォルトタブから初期化）
   const [activeTab, setActiveTab] = useState<
     "glossary" | "translator" | "ai-translator"
-  >("glossary");
+  >(defaultSidebarTab);
 
-  // カラーコードツールバーの表示状態
-  const [showColorCodeToolbar, setShowColorCodeToolbar] = useState(false);
+  // カラーコードツールバーの表示状態（設定から初期化）
+  const [showColorCodeToolbar, setShowColorCodeToolbar] = useState(colorCodeToolbarDefaultVisible);
 
   // テキストエリアの参照
   const [textareaRef, setTextareaRef] = useState<HTMLTextAreaElement | null>(null);
@@ -104,6 +115,28 @@ export default function Editer() {
   // 前回のタグ状態を保持するRef
   const prevTagsRef = useRef<string[]>([]);
   const prevKeyRef = useRef<string>("none");
+
+  // エディター設定の初期化
+  useEffect(() => {
+    initializeEditorSettings();
+  }, [initializeEditorSettings]);
+
+  // デフォルトタブの変更を反映
+  useEffect(() => {
+    setActiveTab(defaultSidebarTab);
+  }, [defaultSidebarTab]);
+
+  // カラーコードツールバーのデフォルト表示設定を反映
+  useEffect(() => {
+    setShowColorCodeToolbar(colorCodeToolbarDefaultVisible);
+  }, [colorCodeToolbarDefaultVisible]);
+
+  // 置換モードを終了する関数
+  const cancelReplaceMode = () => {
+    // イベントバスを通してキャンセルを通知
+    eventBus.emit(REPLACE_EVENTS.CANCEL_REPLACE_MODE);
+  };
+
 
   // タグが変更されたらListStoreとfileopストアを更新する
   useEffect(() => {
@@ -181,11 +214,6 @@ export default function Editer() {
     }
   };
 
-  // 置換モードを終了する関数
-  const cancelReplaceMode = () => {
-    // イベントバスを通してキャンセルを通知
-    eventBus.emit(REPLACE_EVENTS.CANCEL_REPLACE_MODE);
-  };
 
   // 現在のアイテムを置換する関数
   const replaceCurrentItem = () => {
@@ -279,7 +307,13 @@ export default function Editer() {
 
   return (
     <div className="flex flex-row bg-base-100 h-full">
-      <div className="w-2/3 rounded-sm p-2 flex flex-col overflow-y-auto max-h-full">
+      <div
+        className={`${sidebarVisible ? `w-${100 - sidebarWidth}` : 'w-full'} rounded-sm p-2 flex flex-col overflow-y-auto max-h-full`}
+        style={{
+          width: sidebarVisible ? `${100 - sidebarWidth}%` : '100%',
+          fontSize: `${fontSize}px`
+        }}
+      >
         <div className="flex items-center justify-between">
           <div className="text-primary text-lg flex items-center">
             key:
@@ -354,6 +388,7 @@ export default function Editer() {
         </div>
         
         {/* タグ編集UI - Zennスタイルのインライン入力 */}
+        {tagEditAreaVisible && (
         <div className="mt-2">
           <div className="text-sm text-base-content/70 mb-2">タグ:</div>
           <div className="relative">
@@ -516,8 +551,9 @@ export default function Editer() {
               </div>
             )}
           </div>
-        </div>
-        <div className="mt-4 text-lg">原文:</div>
+       </div>
+       )}
+       <div className="mt-4 text-lg">原文:</div>
         <div className="text-lg rounded-md p-4 bg-base-200 w-full h-fit">
           <ColorCodeText text={sourceValue} />
         </div>
@@ -647,7 +683,11 @@ export default function Editer() {
           </div>
         )}
       </div>
-      <div className="w-1/3 border-l border-base-300 flex flex-col">
+      {sidebarVisible && (
+      <div
+        className="border-l border-base-300 flex flex-col"
+        style={{ width: `${sidebarWidth}%` }}
+      >
         {/* タブ切り替え部分 */}
         <div className="tabs tabs-boxed bg-base-200 mb-2 mx-2 mt-2">
           <a
@@ -673,6 +713,7 @@ export default function Editer() {
         {/* タブに応じたコンポーネントを表示 */}
         <div className="flex-1 overflow-hidden">{renderTabContent()}</div>
       </div>
+      )}
 
       {/* 完全削除確認ダイアログ */}
       {showDeleteDialog && (

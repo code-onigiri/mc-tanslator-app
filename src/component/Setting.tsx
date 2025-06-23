@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import GeminiSettings from "./GeminiSettings";
 import ColorCodeText from "./ColorCodeText";
+import EditorSettings from "./EditorSettings";
 import {
   useSettingsStore,
   AVAILABLE_THEMES,
@@ -293,6 +294,11 @@ export default function SettingsMenu() {
   const OtherSettings = ({ id }: { id: string }) => {
     const item = settingItems.find(item => item.id === id);
     
+    // エディター設定の場合は専用コンポーネントを返す
+    if (id === 'editor') {
+      return <EditorSettings />;
+    }
+    
     return (
       <div className="space-y-6">
         <div className="text-center py-12">
@@ -304,14 +310,6 @@ export default function SettingsMenu() {
           <div className="bg-base-200 p-4 rounded-lg text-sm">
             <p className="font-medium mb-2">予定されている機能:</p>
             <ul className="list-disc list-inside space-y-1 text-left">
-              {id === 'editor' && (
-                <>
-                  <li>フォントサイズ調整</li>
-                  <li>行番号表示設定</li>
-                  <li>自動保存設定</li>
-                  <li>ショートカットキー設定</li>
-                </>
-              )}
               {id === 'language' && (
                 <>
                   <li>表示言語切り替え</li>
