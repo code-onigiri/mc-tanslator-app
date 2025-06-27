@@ -12,27 +12,8 @@ import { eventBus, REPLACE_EVENTS } from "../util/eventBus";
 import ColorCodeText from "./ColorCodeText";
 import ColorCodeToolbar from "./ColorCodeToolbar";
 import { markKeyAsDeleted, unmarkKeyAsDeleted, permanentlyDeleteKey } from "../util/file/fileUpdate";
-
-// テキストをハイライトする関数
-const highlightText = (text: string, query: string): React.ReactNode => {
-  if (!query.trim()) return <>{text}</>;
-
-  const parts = text.split(new RegExp(`(${query})`, "gi"));
-
-  return (
-    <>
-      {parts.map((part, i) =>
-        part.toLowerCase() === query.toLowerCase() ? (
-          <span key={i} className="bg-warning text-warning-content">
-            {part}
-          </span>
-        ) : (
-          <span key={i}>{part}</span>
-        ),
-      )}
-    </>
-  );
-};
+import { highlightText } from "../util/highlightText";
+import { TagEditor } from "./Editer/TagEditor";
 
 export default function Editer() {
   // エディター設定ストアから状態を取得
@@ -389,170 +370,21 @@ export default function Editer() {
         
         {/* タグ編集UI - Zennスタイルのインライン入力 */}
         {tagEditAreaVisible && (
-        <div className="mt-2">
-          <div className="text-sm text-base-content/70 mb-2">タグ:</div>
-          <div className="relative">
-            <div className="flex flex-wrap border border-base-300 leading-tight pt-3 pb-2 px-4 rounded-lg focus-within:border-primary bg-base-100">
-              {tags.map((tag, index) => (
-                <span
-                  key={index}
-                  className="inline-flex items-center bg-primary text-primary-content text-sm font-medium rounded mr-1 mb-1"
-                >
-                  <span className="py-1 px-2">{tag}</span>
-                  <span
-                    className="inline-flex items-center border-l border-primary-content/20 h-full cursor-pointer py-1 px-2 hover:bg-primary-focus"
-                    onClick={() => {
-                      const newTags = tags.filter((_, i) => i !== index);
-                      setTags(newTags);
-                      // タグフィルター解除ロジック
-                      if (tagFilter.length > 0 && tagFilter.every(tag => !newTags.includes(tag))) {
-                        setTagFilter([]);
-                      }
-                    }}
-                  >
-                    ×
-                  </span>
-                </span>
-              ))}
-              <input
-                type="text"
-                placeholder="タグを入力してTabで選択、Enterで決定..."
-                className="flex-grow border-0 mb-1 outline-none bg-transparent min-w-32"
-                value={tagInput}
-                onChange={(e) => {
-                  setTagInput(e.target.value);
-                  setShowTagSuggestions(e.target.value.length > 0);
-                  setSelectedSuggestionIndex(-1);
-                }}
-                onKeyDown={(e) => {
-                  if (e.nativeEvent.isComposing) return;
-                  
-                  const value = e.currentTarget.value.trim();
-                  const filteredTags = allTags.filter(tag =>
-                    tag.toLowerCase().includes(value.toLowerCase()) &&
-                    !tags.includes(tag)
-                  );
-                  
-                  // ArrowDown/ArrowUpで候補選択
-                  if (e.key === 'ArrowDown' && showTagSuggestions && filteredTags.length > 0) {
-                    e.preventDefault();
-                    setSelectedSuggestionIndex(prev =>
-                      prev < filteredTags.length - 1 ? prev + 1 : 0
-                    );
-                    return;
-                  }
-                  
-                  if (e.key === 'ArrowUp' && showTagSuggestions && filteredTags.length > 0) {
-                    e.preventDefault();
-                    setSelectedSuggestionIndex(prev =>
-                      prev > 0 ? prev - 1 : filteredTags.length - 1
-                    );
-                    return;
-                  }
-                  
-                  // Tabで候補選択（未選択→0、以降+1、最後は0に戻る）
-                  if (e.key === 'Tab' && showTagSuggestions && filteredTags.length > 0) {
-                    e.preventDefault();
-                    setSelectedSuggestionIndex(prev => {
-                      if (prev === -1 || prev >= filteredTags.length - 1) return 0;
-                      return prev + 1;
-                    });
-                    return;
-                  }
-                  
-                  // Enterで選択中の候補を追加
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    if (showTagSuggestions && filteredTags.length > 0 && selectedSuggestionIndex !== -1) {
-                      const selectedTag = filteredTags[selectedSuggestionIndex];
-                      if (selectedTag && !tags.includes(selectedTag)) {
-                        setTags([...tags, selectedTag]);
-                        if (!allTags.includes(selectedTag)) {
-                          setAllTags([...allTags, selectedTag]);
-                        }
-                      }
-                      setTagInput('');
-                      setShowTagSuggestions(false);
-                      setSelectedSuggestionIndex(-1);
-                      return;
-                    }
-                    // 通常の新規タグ追加
-                    if (value && !tags.includes(value)) {
-                      setTags([...tags, value]);
-                      if (!allTags.includes(value)) {
-                        setAllTags([...allTags, value]);
-                      }
-                    }
-                    setTagInput('');
-                    setShowTagSuggestions(false);
-                    setSelectedSuggestionIndex(-1);
-                    return;
-                  }
-                  
-                  // Backspaceが押され、入力欄が空でタグがある場合、最後のタグを削除
-                  if (e.key === 'Backspace' && !value.length && tags.length > 0) {
-                    const newTags = [...tags];
-                    newTags.splice(tags.length - 1, 1);
-                    setTags(newTags);
-                    // タグフィルター解除ロジック
-                    if (tagFilter.length > 0 && tagFilter.every(tag => !newTags.includes(tag))) {
-                      setTagFilter([]);
-                    }
-                    return;
-                  }
-                  
-                  // Escで未選択状態に戻す
-                  if (e.key === 'Escape') {
-                    setSelectedSuggestionIndex(-1);
-                    setShowTagSuggestions(false);
-                  }
-                }}
-                onFocus={() => setShowTagSuggestions(tagInput.length > 0)}
-                onBlur={() => setTimeout(() => setShowTagSuggestions(false), 200)}
-              />
-            </div>
-            
-            {/* オートコンプリート候補 */}
-            {showTagSuggestions && (
-              <div className="absolute z-10 w-full mt-1 bg-base-100 border border-base-300 rounded-lg shadow-lg max-h-40 overflow-y-auto">
-                {allTags
-                  .filter(tag =>
-                    tag.toLowerCase().includes(tagInput.toLowerCase()) &&
-                    !tags.includes(tag)
-                  )
-                  .map((tag, index) => (
-                    <div
-                      key={tag}
-                      className={`px-3 py-2 cursor-pointer text-sm ${
-                        index === selectedSuggestionIndex
-                          ? 'bg-primary text-primary-content'
-                          : 'hover:bg-base-200'
-                      }`}
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        if (!tags.includes(tag)) {
-                          setTags([...tags, tag]);
-                        }
-                        setTagInput('');
-                        setShowTagSuggestions(false);
-                        setSelectedSuggestionIndex(-1);
-                      }}
-                      onMouseEnter={() => setSelectedSuggestionIndex(index)}
-                    >
-                      #{tag}
-                    </div>
-                  ))
-                }
-                {tagInput.trim() && !allTags.some(tag => tag.toLowerCase() === tagInput.toLowerCase()) && (
-                  <div className="px-3 py-1 text-xs text-base-content/50 border-t border-base-300">
-                    Tabで選択、Enterで決定
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-       </div>
-       )}
+          <TagEditor
+            tags={tags}
+            allTags={allTags}
+            tagInput={tagInput}
+            showTagSuggestions={showTagSuggestions}
+            selectedSuggestionIndex={selectedSuggestionIndex}
+            tagFilter={tagFilter}
+            setTags={setTags}
+            setAllTags={setAllTags}
+            setTagFilter={setTagFilter}
+            tagInputChange={setTagInput}
+            setShowTagSuggestions={setShowTagSuggestions}
+            setSelectedSuggestionIndex={setSelectedSuggestionIndex}
+          />
+        )}
        <div className="mt-4 text-lg">原文:</div>
         <div className="text-lg rounded-md p-4 bg-base-200 w-full h-fit">
           <ColorCodeText text={sourceValue} />

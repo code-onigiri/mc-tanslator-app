@@ -5,37 +5,10 @@ import { useListStore, useSyncTranslateData } from "./stores/ListStore";
 import { useediter } from "./stores/EditerStore";
 import { Search } from "./Search";
 import ColorCodeText from "./ColorCodeText";
+import { highlightText } from "../util/highlightText";
+import { truncateText } from "../util/truncateText";
 
 type FilterType = "all" | "translated" | "untranslated";
-
-// テキストを省略する関数
-// 指定された最大文字数を超える場合、末尾に"..."を追加して省略表示します
-const truncateText = (text: string, maxLength: number = 50): string => {
-  if (text.length <= maxLength) return text;
-  return text.substring(0, maxLength) + "...";
-};
-
-// テキストをハイライトする関数
-// 検索クエリに一致する部分をハイライト表示します
-const highlightText = (text: string, query: string): React.ReactNode => {
-  if (!query.trim()) return <>{text}</>;
-
-  const parts = text.split(new RegExp(`(${query})`, "gi"));
-
-  return (
-    <>
-      {parts.map((part, index) =>
-        part.toLowerCase() === query.toLowerCase() ? (
-          <span key={index} className="bg-warning text-warning-content">
-            {part}
-          </span>
-        ) : (
-          <span key={index}>{part}</span>
-        ),
-      )}
-    </>
-  );
-};
 
 // 未翻訳アイテムを判定する関数
 // 翻訳文が空、または原文と一致する場合は未翻訳とみなします

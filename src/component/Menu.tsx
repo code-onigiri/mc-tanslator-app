@@ -311,6 +311,8 @@ interface MenuConfig {
   visible?: boolean;
 }
 
+import BulkAITranslate from "./BulkAITranslate";
+
 // メニュー設定（新しいメニューを追加する際はここに追加）
 const menuConfigs: MenuConfig[] = [
   {
@@ -320,18 +322,22 @@ const menuConfigs: MenuConfig[] = [
     visible: true,
   },
   {
+    id: "edit",
+    title: "編集",
+    component: () => (
+      <div className="space-y-2">
+        <BulkAITranslate />
+      </div>
+    ),
+    visible: true,
+  },
+  {
     id: "other",
     title: "その他",
     component: OtherMenu,
     visible: true,
   },
   // 将来的なメニューの例（コメントアウト）
-  // {
-  //   id: "edit",
-  //   title: "編集",
-  //   component: EditMenu,
-  //   visible: true,
-  // },
   // {
   //   id: "view",
   //   title: "表示",
